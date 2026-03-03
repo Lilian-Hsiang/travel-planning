@@ -2,7 +2,7 @@
   <div class="home-container">
     <!-- 導覽列 -->
     <header class="header">
-      <div class="logo">✈️ Voyage Planner</div>
+      <div class="logo">✈️ Travel Planner</div>
       
       <div class="auth-section">
         <template v-if="!loading">

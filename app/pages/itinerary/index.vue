@@ -1,7 +1,10 @@
 <template>
   <div class="trips-container">
     <header class="page-header">
-      <h1>我的旅程</h1>
+      <div class="title-block">
+        <NuxtLink class="back-link" to="/">← 返回首頁</NuxtLink>
+        <h1>我的旅程</h1>
+      </div>
       <button @click="isModalOpen = true" class="add-btn">+ 新增旅程</button>
     </header>
 
@@ -56,7 +59,6 @@
         </div>
       </div>
     </AppModal>
-
   </div>
 </template>
 
@@ -131,7 +133,25 @@ const executeDeleteTrip = async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  gap: 1rem;
   
+  .title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .back-link {
+    font-size: 0.95rem;
+    text-decoration: none;
+    color: #6b7280;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #374151;
+    }
+  }
+
   h1 { font-size: 1.75rem; color: #1f2937; margin: 0; }
   
   .add-btn {

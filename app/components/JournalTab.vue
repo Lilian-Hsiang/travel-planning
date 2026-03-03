@@ -45,6 +45,21 @@
           </div>
           <div class="form-group flex-1 sticker-group">
             <label>選擇心情或貼圖</label>
+            <div v-if="selectedStickers.length" class="selected-stickers">
+              <div class="selected-title">已選貼圖</div>
+              <div class="selected-list">
+                <button
+                  v-for="(sticker, index) in selectedStickers"
+                  :key="`selected-${index}-${sticker}`"
+                  type="button"
+                  class="selected-pill"
+                  @click="removeSticker(index)"
+                >
+                  <span class="emoji">{{ sticker }}</span>
+                  <span class="remove-icon">✕</span>
+                </button>
+              </div>
+            </div>
             <div class="sticker-library">
               <div v-for="category in stickerCategories" :key="category.name" class="sticker-category">
                 <h4 class="category-title">{{ category.name }}</h4>
@@ -55,7 +70,7 @@
                     type="button"
                     class="sticker-btn"
                     :class="{ active: form.mood.includes(sticker) }"
-                    @click="form.mood += sticker"
+                    @click="addSticker(sticker)"
                   >
                     {{ sticker }}
                   </button>
@@ -184,6 +199,8 @@ const form = ref<{ date: string, mood: string, theme: string, content: string, p
   photos: []
 })
 
+const selectedStickers = computed(() => Array.from(form.value.mood || ''))
+
 const fileInput = ref<HTMLInputElement | null>(null)
 const isUploading = ref(false)
 
@@ -212,6 +229,16 @@ const openEditModal = (journal: any) => {
 const closeModal = () => {
   if (isUploading.value) return // 防止上傳中關閉
   isModalOpen.value = false
+}
+
+const addSticker = (sticker: string) => {
+  form.value.mood += sticker
+}
+
+const removeSticker = (index: number) => {
+  const stickers = Array.from(form.value.mood || '')
+  stickers.splice(index, 1)
+  form.value.mood = stickers.join('')
 }
 
 // --- 照片多張上傳邏輯 (轉換為 Base64) ---
@@ -430,6 +457,49 @@ const confirmDelete = async () => {
   /* Sticker Library */
   .sticker-group {
     width: 100%; // Let it take full width below date
+  }
+
+  .selected-stickers {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px dashed rgba(254, 163, 101, 0.4);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+
+    .selected-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fdba74;
+      margin-bottom: 0.5rem;
+    }
+
+    .selected-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .selected-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid rgba(254, 163, 101, 0.6);
+      background: rgba(255, 210, 131, 0.2);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1.2;
+      transition: transform 0.2s, background 0.2s;
+
+      .emoji { font-size: 1.25rem; }
+      .remove-icon { font-size: 0.8rem; color: #fb923c; }
+
+      &:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 210, 131, 0.35);
+      }
+    }
   }
 
   .sticker-library {
