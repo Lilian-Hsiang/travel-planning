@@ -55,47 +55,58 @@
         </div>
 
         <div v-else class="itinerary-list">
-          <div v-for="item in filteredItineraries" :key="item.id" class="card">
-            <div class="card-time">{{ item.time || '00:00' }}</div>
-            <div class="card-body">
-              <span class="category">{{ item.category || 'ATTRACTION' }}</span>
-              <h3>{{ item.name }}</h3>
-              <p>📍 {{ item.location }}</p>
+          <template v-for="(item, index) in filteredItineraries" :key="item.id">
+            
+            <!-- 行程間的交通時間/距離 (從第二筆開始顯示) -->
+            <div v-if="index > 0" class="transit-connector">
+              <div class="connector-line"></div>
+              <a 
+                :href="getDirectionsUrl(filteredItineraries[index-1].location, item.location)" 
+                target="_blank" 
+                class="transit-link"
+                title="點擊導航"
+              >
+                🚗 路線導航
+                <span class="transit-note">(預估時間與距離需串接 Map API)</span>
+              </a>
             </div>
-            <div class="card-actions">
-              <button class="edit-btn" @click="openEdit(item)">編輯</button>
-              <button @click="deleteItinerary(item.id)" class="delete-btn">刪除</button>
+
+            <div class="card">
+              <div class="card-time">{{ item.time || '00:00' }}</div>
+              <div class="card-body">
+                <span class="category">{{ item.category || 'ATTRACTION' }}</span>
+                <h3>{{ item.name }}</h3>
+                <p>
+                  📍 
+                  <a :href="getMapUrl(item.location)" target="_blank" class="location-link">
+                    {{ item.location }}
+                  </a>
+                </p>
+                <p v-if="item.notes" class="notes">📝 {{ item.notes }}</p>
+              </div>
+              <div class="card-actions">
+                <button class="edit-btn" @click="openEdit(item)">編輯</button>
+                <button @click="openDeleteConfirm(item)" class="delete-btn">刪除</button>
+              </div>
             </div>
-          </div>
+          </template>
         </div>
       </main>
     </div>
 
     <!-- ==================== 2. 購物清單 Tab ==================== -->
-    <div v-else-if="activeTab === 'shopping'" class="placeholder-layout">
-      <div class="placeholder-content">
-        <span class="icon">🛍️</span>
-        <h2>購物清單</h2>
-        <p>這裡將會顯示購物清單的內容 (開發中...)</p>
-      </div>
+    <div v-else-if="activeTab === 'shopping'">
+      <PlaceListTab list-type="shopping" :trip-id="tripId as string" />
     </div>
 
     <!-- ==================== 3. 美食清單 Tab ==================== -->
-    <div v-else-if="activeTab === 'food'" class="placeholder-layout">
-      <div class="placeholder-content">
-        <span class="icon">🍔</span>
-        <h2>美食清單</h2>
-        <p>這裡將會顯示美食清單的內容 (開發中...)</p>
-      </div>
+    <div v-else-if="activeTab === 'food'">
+      <PlaceListTab list-type="food" :trip-id="tripId as string" />
     </div>
 
     <!-- ==================== 4. 旅遊手帳 Tab ==================== -->
-    <div v-else-if="activeTab === 'journal'" class="placeholder-layout">
-      <div class="placeholder-content">
-        <span class="icon">📖</span>
-        <h2>旅遊手帳</h2>
-        <p>這裡將會顯示旅遊手帳的內容 (開發中...)</p>
-      </div>
+    <div v-else-if="activeTab === 'journal'">
+      <JournalTab :trip-id="tripId as string" />
     </div>
 
     <!-- ==================== Modals ==================== -->
@@ -133,8 +144,24 @@
           <label>地點</label>
           <input v-model="form.location" type="text" required />
         </div>
+        <div class="form-group">
+          <label>備註</label>
+          <textarea v-model="form.notes" rows="3" placeholder="例如：記得帶雨傘、門票預約代碼..."></textarea>
+        </div>
         <button type="submit" class="submit-btn">確認儲存行程</button>
       </form>
+    </AppModal>
+
+    <!-- 3. 刪除確認 Modal -->
+    <AppModal :is-open="isDeleteModalOpen" title="刪除確認" @close="closeDeleteModal">
+      <div class="delete-confirm-content">
+        <p>確定要刪除「<strong>{{ deletingItem?.name }}</strong>」這個行程嗎？</p>
+        <p class="warning-text">此動作無法還原。</p>
+        <div class="modal-actions">
+          <button @click="closeDeleteModal" class="cancel-btn">取消</button>
+          <button @click="confirmDelete" class="submit-btn delete-btn">確定刪除</button>
+        </div>
+      </div>
     </AppModal>
 
   </div>
@@ -148,23 +175,37 @@ const route = useRoute()
 const tripId = route.params.id
 
 const { authFetch } = useAuthFetch()
+const { user } = useAuth()
 
 // --- Tab 狀態管理 ---
 const activeTab = ref('itinerary') // 預設顯示「行程規劃」
 
 // 1. 取得該旅程的詳細資訊
-const { data: trip, refresh: refreshTrip } = await useAsyncData(
+const { data: trip, refresh: refreshTrip, pending: tripPending } = await useAsyncData(
   `trip-${tripId}`,
   () => authFetch(`/api/trips/${tripId}`),
-  { server: false }
+  { 
+    server: false,
+    immediate: false,
+    watch: [user]
+  }
 )
 
 // 2. 取得該旅程的所有行程
 const { data: itineraries, pending, refresh } = await useAsyncData(
   `itineraries-${tripId}`,
   () => authFetch(`/api/itinerary?tripId=${tripId}`),
-  { server: false }
+  { 
+    server: false,
+    immediate: false,
+    watch: [user] 
+  }
 )
+
+if (user.value) {
+  refreshTrip()
+  refresh()
+}
 
 const selectedDay = ref(1)
 
@@ -175,6 +216,17 @@ const filteredItineraries = computed(() => {
     .filter(item => item.day === selectedDay.value)
     .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'))
 })
+
+// --- Google Maps 連結產生器 ---
+const getMapUrl = (location: string) => {
+  if (!location) return '#'
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
+}
+
+const getDirectionsUrl = (origin: string, destination: string) => {
+  if (!origin || !destination) return '#'
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+}
 
 // --- 新增天數邏輯 ---
 const isDayModalOpen = ref(false)
@@ -204,12 +256,12 @@ const submitDayForm = async () => {
 const isModalOpen = ref(false)
 const isEditing = ref(false)
 const editingId = ref<string | null>(null)
-const form = ref({ time: '10:00', category: 'ATTRACTION', name: '', location: '', day: 1 })
+const form = ref({ time: '10:00', category: 'ATTRACTION', name: '', location: '', notes: '', day: 1 })
 
 const openAddModal = () => {
   isEditing.value = false
   editingId.value = null
-  form.value = { time: '10:00', category: 'ATTRACTION', name: '', location: '', day: selectedDay.value }
+  form.value = { time: '10:00', category: 'ATTRACTION', name: '', location: '', notes: '', day: selectedDay.value }
   isModalOpen.value = true
 }
 
@@ -221,6 +273,7 @@ const openEdit = (item) => {
     category: item.category || 'ATTRACTION',
     name: item.name || '',
     location: item.location || '',
+    notes: item.notes || '',
     day: item.day || selectedDay.value
   }
   isModalOpen.value = true
@@ -252,11 +305,32 @@ const submitForm = async () => {
   }
 }
 
-const deleteItinerary = async (id) => {
-  if (!confirm('確定刪除？')) return
-  await authFetch(`/api/itinerary/${id}`, { method: 'DELETE' })
-  await refresh()
+// --- 刪除行程邏輯 ---
+const isDeleteModalOpen = ref(false)
+const deletingItem = ref<any>(null)
+
+const openDeleteConfirm = (item: any) => {
+  deletingItem.value = item
+  isDeleteModalOpen.value = true
 }
+
+const closeDeleteModal = () => {
+  isDeleteModalOpen.value = false
+  deletingItem.value = null
+}
+
+const confirmDelete = async () => {
+  if (!deletingItem.value) return
+  
+  try {
+    await authFetch(`/api/itinerary/${deletingItem.value.id}`, { method: 'DELETE' })
+    closeDeleteModal()
+    await refresh()
+  } catch (err) {
+    alert('刪除失敗')
+  }
+}
+
 </script>
 
 <style lang="scss" scoped>
@@ -432,6 +506,63 @@ const deleteItinerary = async (id) => {
 /* 行程卡片 */
 .itinerary-list { display: flex; flex-direction: column; gap: 1rem; }
 
+/* 景點連結 */
+.location-link {
+  color: #3b82f6;
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* 交通連接線 */
+.transit-connector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1rem;
+  margin: -0.25rem 0; /* 讓它跟兩邊卡片靠近一點 */
+  
+  .connector-line {
+    width: 3rem; /* 對齊卡片的時間寬度 */
+    height: 100%;
+    min-height: 2.5rem;
+    position: relative;
+    &::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #cbd5e1;
+      transform: translateX(-50%);
+    }
+  }
+  
+  .transit-link {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-decoration: none;
+    background: #f8fafc;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+    
+    &:hover {
+      background: #e2e8f0;
+      color: #374151;
+    }
+
+    .transit-note {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-left: 0.5rem;
+    }
+  }
+}
+
 .card {
   background: white;
   border-radius: 1rem;
@@ -448,6 +579,12 @@ const deleteItinerary = async (id) => {
     .category { font-size: 0.75rem; background: #e0e7ff; color: #4f46e5; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-weight: bold; }
     h3 { margin: 0.5rem 0 0.25rem 0; font-size: 1.125rem; }
     p { margin: 0; color: #6b7280; font-size: 0.875rem; }
+    .notes {
+      color: #6b7280;
+      font-size: 0.8125rem;
+      margin: 0.25rem 0 0;
+      white-space: pre-line;
+    }
   }
   .card-actions {
     display: flex;
@@ -469,6 +606,31 @@ const deleteItinerary = async (id) => {
   .delete-btn {
     background: #fee2e2;
     color: #ef4444;
+  }
+}
+
+/* 刪除確認 Modal 樣式 */
+.delete-confirm-content {
+  padding: 1rem 0;
+  text-align: center;
+  p { margin-bottom: 0.5rem; color: #374151; }
+  .warning-text { color: #dc2626; font-size: 0.875rem; margin-bottom: 1.5rem; }
+  
+  .modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    
+    .cancel-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid #d1d5db;
+      background: white;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: bold;
+      color: #374151;
+      &:hover { background: #f3f4f6; }
+    }
   }
 }
 
