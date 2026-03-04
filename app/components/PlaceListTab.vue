@@ -15,8 +15,8 @@
         <div class="card-header">
           <h3>{{ place.name }}</h3>
           <div class="actions">
-            <button class="icon-btn edit" @click="openEditModal(place)">✏️</button>
-            <button class="icon-btn delete" @click="openDeleteConfirm(place)">🗑️</button>
+            <button class="edit-btn" @click="openEditModal(place)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
+            <button class="delete-btn" @click="openDeleteConfirm(place)"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
           </div>
         </div>
         <p class="location">
@@ -255,14 +255,14 @@ const deleteItem = async (place: any, itemId: string) => {
   }
 
   .add-btn {
-    background: #5A4CFA;
+    background: #fa8a3e;
     color: white;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
     font-weight: bold;
-    &:hover { background: #4C3EEA; }
+    &:hover { background: #fea365; }
   }
 }
 
@@ -289,6 +289,22 @@ const deleteItem = async (place: any, itemId: string) => {
   display: flex;
   flex-direction: column;
 }
+  .edit-btn,
+  .delete-btn {
+    padding: 0.5rem 0.5rem;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .edit-btn {
+    background: #9FAF64;
+    color: white;
+  }
+  .delete-btn {
+    background: #ff8d41;
+    color: white;
+  }
 
 .card-header {
   display: flex;
@@ -322,7 +338,8 @@ const deleteItem = async (place: any, itemId: string) => {
   color: #6b7280;
   
   .location-link {
-    color: #3b82f6;
+    color: #9FAF64;
+    font-weight: bold;
     text-decoration: none;
     &:hover { text-decoration: underline; }
   }
@@ -389,15 +406,15 @@ const deleteItem = async (place: any, itemId: string) => {
     }
 
     button {
-      background: #e0e7ff;
-      color: #4f46e5;
+      background: #ffecdf;
+      color: #fa8a3e;
       border: none;
       width: 2rem;
       height: 2rem;
       border-radius: 0.375rem;
       cursor: pointer;
       font-weight: bold;
-      &:hover:not(:disabled) { background: #c7d2fe; }
+      &:hover:not(:disabled) { background: #ffecdf; }
       &:disabled { opacity: 0.5; cursor: not-allowed; }
     }
   }
@@ -431,7 +448,7 @@ const deleteItem = async (place: any, itemId: string) => {
   
   .submit-btn {
     margin-top: 1rem;
-    background: #5A4CFA;
+    background: #FEA365;
     color: white;
     border: none;
     padding: 0.75rem;
@@ -439,7 +456,7 @@ const deleteItem = async (place: any, itemId: string) => {
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
-    &:hover { background: #4C3EEA; }
+    &:hover { background: #FEA365; }
   }
 }
 

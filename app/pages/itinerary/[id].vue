@@ -4,7 +4,10 @@
     <!-- 全域 Header 與 Tab 選單 -->
     <header class="trip-global-header">
       <div class="header-top">
-        <NuxtLink class="back-btn" to="/itinerary">← 返回我的旅程</NuxtLink>
+        <NuxtLink class="back-btn" to="/itinerary">
+          <FontAwesomeIcon :icon="['fas', 'arrow-left']" class="back-icon" aria-hidden="true" />
+          返回我的旅程
+        </NuxtLink>
         <h1 class="trip-title">{{ trip?.name || '載入中...' }}</h1>
       </div>
       
@@ -45,7 +48,7 @@
         <div class="content-header">
           <h2>第 {{ selectedDay }} 天行程</h2>
           <button @click="openAddModal" class="add-item-btn" :disabled="!trip?.days?.length">
-            + 新增單筆行程
+            + 新增行程
           </button>
         </div>
 
@@ -66,8 +69,8 @@
                 class="transit-link"
                 title="點擊導航"
               >
-                🚗 路線導航
-                <span class="transit-note">(預估時間與距離需串接 Map API)</span>
+               <FontAwesomeIcon :icon="['fas', 'route']" class="inline-icon" />
+                開啟路線導航
               </a>
             </div>
 
@@ -76,17 +79,20 @@
               <div class="card-body">
                 <span class="category">{{ item.category || 'ATTRACTION' }}</span>
                 <h3>{{ item.name }}</h3>
-                <p>
-                  📍 
-                  <a :href="getMapUrl(item.location)" target="_blank" class="location-link">
+                <p class="location-row">
+                  <!-- <FontAwesomeIcon :icon="['fas', 'location-dot']" class="" aria-hidden="true" /> -->
+                  📍 <a :href="getMapUrl(item.location)" target="_blank" class="location-link">
                     {{ item.location }}
                   </a>
                 </p>
-                <p v-if="item.notes" class="notes">📝 {{ item.notes }}</p>
+                <p v-if="item.notes" class="notes">
+                  <FontAwesomeIcon :icon="['far', 'clipboard']" class="inline-icon" aria-hidden="true" />
+                  {{ item.notes }}
+                </p>
               </div>
               <div class="card-actions">
-                <button class="edit-btn" @click="openEdit(item)">編輯</button>
-                <button @click="openDeleteConfirm(item)" class="delete-btn">刪除</button>
+                <button class="edit-btn" @click="openEdit(item)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
+                <button @click="openDeleteConfirm(item)" class="delete-btn"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
               </div>
             </div>
           </template>
@@ -336,13 +342,13 @@ const confirmDelete = async () => {
 <style lang="scss" scoped>
 .trip-page-wrapper {
   min-height: 100vh;
-  background: #F7F7F9;
+  background: #fff5e3;
   font-family: sans-serif;
 }
 
 /* 全域 Header 與 Tabs */
 .trip-global-header {
-  background: white;
+  background: #FFD283;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   position: sticky;
   top: 0;
@@ -357,10 +363,16 @@ const confirmDelete = async () => {
       color: #6b7280;
       text-decoration: none;
       font-size: 0.875rem;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
       margin-bottom: 0.5rem;
       transition: color 0.2s;
-      &:hover { color: #5A4CFA; }
+      &:hover { color: #413524; }
+    }
+
+    .back-icon {
+      font-size: 0.9rem;
     }
     
     .trip-title {
@@ -387,17 +399,17 @@ const confirmDelete = async () => {
       padding: 1rem 0;
       font-size: 1rem;
       font-weight: bold;
-      color: #9ca3af;
+      color: #7e7a67;
       cursor: pointer;
       border-bottom: 3px solid transparent;
       white-space: nowrap;
       transition: all 0.2s;
 
-      &:hover { color: #4b5563; }
+      &:hover { color: #635f4b; }
       
       &.active {
-        color: #5A4CFA;
-        border-bottom-color: #5A4CFA;
+        color: #f3731e;
+        border-bottom-color: #FEA365;
       }
     }
   }
@@ -419,7 +431,7 @@ const confirmDelete = async () => {
 
 /* 左側/上方 日期選擇區 */
 .days-sidebar {
-  background: white;
+  background: #9FAF64;
   padding: 1rem 1.5rem;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
   
@@ -440,8 +452,8 @@ const confirmDelete = async () => {
       
       h2 { margin: 0; font-size: 1.25rem; color: #1f2937; }
       .add-day-btn {
-        background: #e0e7ff; color: #4f46e5; border: none; padding: 0.35rem 0.75rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: bold; transition: background 0.2s;
-        &:hover { background: #c7d2fe; }
+        background: #fff5e3; color: #ff8d41; border: none; padding: 0.35rem 0.75rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: bold; transition: background 0.2s;
+        &:hover { background: #ffe6bb; }
       }
     }
   }
@@ -473,10 +485,10 @@ const confirmDelete = async () => {
     transition: all 0.2s;
     
     &.active {
-      background: #5A4CFA;
-      border-color: #5A4CFA;
-      color: white;
-      .day-num, .day-date { color: white; }
+      background: #FFD283;
+      border-color: #FFD283;
+      color: #374151;
+      .day-num, .day-date { color: #374151; }
     }
     
     .day-num { font-weight: bold; font-size: 1rem; color: #374151; }
@@ -497,7 +509,7 @@ const confirmDelete = async () => {
     
     h2 { margin: 0; font-size: 1.5rem; color: #1f2937; }
     .add-item-btn {
-      background: #5A4CFA; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold;
+      background: #fa8a3e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold;
       &:disabled { background: #d1d5db; cursor: not-allowed; }
     }
   }
@@ -508,11 +520,29 @@ const confirmDelete = async () => {
 
 /* 景點連結 */
 .location-link {
-  color: #3b82f6;
+  color: #9FAF64;
+  font-weight: bold;
   text-decoration: none;
   &:hover {
     text-decoration: underline;
   }
+}
+
+.location-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  .inline-icon {
+    color: #9FAF64;
+    font-size: 0.9rem;
+  }
+}
+
+.inline-icon {
+  // color: #9FAF64;
+  font-size: 0.9rem;
+  margin-right: 0.25rem;
 }
 
 /* 交通連接線 */
@@ -535,23 +565,26 @@ const confirmDelete = async () => {
       top: 0;
       bottom: 0;
       width: 2px;
-      background-color: #cbd5e1;
+      background-color: #9FAF64;
       transform: translateX(-50%);
     }
   }
   
   .transit-link {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: white;
     text-decoration: none;
-    background: #f8fafc;
+    background: #9FAF64;
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     border: 1px solid #e2e8f0;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     
     &:hover {
-      background: #e2e8f0;
+      background: #FFD283;
       color: #374151;
     }
 
@@ -573,10 +606,10 @@ const confirmDelete = async () => {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   flex-wrap: wrap;
   
-  .card-time { font-weight: bold; color: #5A4CFA; width: 3rem; }
+  .card-time { font-weight: bold; color: #FEA365; width: 3rem; }
   .card-body {
     flex: 1 1 60%;
-    .category { font-size: 0.75rem; background: #e0e7ff; color: #4f46e5; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-weight: bold; }
+    .category { font-size: 0.75rem; background: #FFD283; color: #514137; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-weight: bold; }
     h3 { margin: 0.5rem 0 0.25rem 0; font-size: 1.125rem; }
     p { margin: 0; color: #6b7280; font-size: 0.875rem; }
     .notes {
@@ -588,24 +621,24 @@ const confirmDelete = async () => {
   }
   .card-actions {
     display: flex;
-    flex-direction: column;
+    // flex-direction: column;
     gap: 0.5rem;
   }
   .edit-btn,
   .delete-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
+    padding: 0.5rem 0.5rem;
+    border-radius: 50%;
     border: none;
     cursor: pointer;
     font-weight: bold;
   }
   .edit-btn {
-    background: #e0f2fe;
-    color: #0369a1;
+    background: #9FAF64;
+    color: white;
   }
   .delete-btn {
-    background: #fee2e2;
-    color: #ef4444;
+    background: #ff8d41;
+    color: white;
   }
 }
 
@@ -662,8 +695,8 @@ const confirmDelete = async () => {
     display: flex; flex-direction: column; gap: 0.5rem;
     label { font-size: 0.875rem; font-weight: bold; color: #374151; }
     input, select { padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; outline: none; }
-    input:focus, select:focus { border-color: #5A4CFA; }
+    input:focus, select:focus { border-color: #FEA365; }
   }
-  .submit-btn { background: #5A4CFA; color: white; padding: 1rem; border: none; border-radius: 0.5rem; font-weight: bold; cursor: pointer; }
+  .submit-btn { background: #FEA365; color: white; padding: 1rem; border: none; border-radius: 0.5rem; font-weight: bold; cursor: pointer; }
 }
 </style>

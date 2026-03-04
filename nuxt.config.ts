@@ -2,6 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  plugins: ['~/plugins/fontawesome'],
   runtimeConfig: {
     firebaseAdmin: {
       projectId: process.env.NUXT_FIREBASE_ADMIN_PROJECT_ID,
@@ -19,5 +20,5 @@ export default defineNuxtConfig({
         measurementId: process.env.NUXT_FIREBASE_MEASUREMENT_ID,
       },
     },
-},
+  },
 })

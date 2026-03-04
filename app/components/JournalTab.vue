@@ -342,8 +342,8 @@ const confirmDelete = async () => {
 
   h2 { font-size: 1.5rem; color: #1f2937; margin: 0; }
   .add-btn {
-    background: #5A4CFA; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold;
-    &:hover { background: #4C3EEA; }
+    background: #fa8a3e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold;
+    &:hover { background: #ff8a3e; }
   }
 }
 
