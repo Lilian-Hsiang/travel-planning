@@ -10,32 +10,112 @@
       目前還沒有日記喔，快來記錄你的旅程吧！
     </div>
 
-    <div v-else class="journal-list">
-      <div v-for="journal in journals" :key="journal.id" class="journal-card">
-        <div class="card-header">
-          <div class="date-mood">
-            <span class="date">{{ journal.date }}</span>
-            <span class="mood-icon" v-if="journal.mood">{{ journal.mood }}</span>
-          </div>
-          <div class="actions">
-            <button class="icon-btn edit" @click="openEditModal(journal)">✏️</button>
-            <button class="icon-btn delete" @click="openDeleteConfirm(journal)">🗑️</button>
-          </div>
+    <div v-else class="timeline">
+      <div class="path-line"></div>
+      <div
+        v-for="(journal, index) in journals"
+        :key="journal.id"
+        class="journal-stop"
+        :class="{ 'is-right': index % 2 === 1 }"
+      >
+        <div class="pin">
+          <div class="pin-dot"></div>
+          <div class="pin-arrow"></div>
         </div>
-        
-        <div class="card-body">
-          <div v-if="journal.photos && journal.photos.length > 0" class="photo-gallery">
-            <img v-for="(photo, index) in journal.photos" :key="index" :src="photo" alt="Journal Photo" class="gallery-img" />
+        <div class="stop-card">
+          <div class="card-header">
+            <div class="card-heading">
+              <p class="date">{{ journal.date }}</p>
+              <p class="meta-line" v-if="journal.weather || journal.mood">
+                <span class="meta-label">天氣:</span>
+                <span
+                  v-for="(emoji, weatherIndex) in splitEmojis(journal.weather)
+                    "
+                  :key="`weather-${journal.id}-${weatherIndex}`"
+                  class="meta-emoji"
+                >
+                  {{ emoji }}
+                </span>
+                <span class="meta-sep">-</span>
+                <span class="meta-label">心情:</span>
+                <span
+                  v-for="(emoji, moodIndex) in splitEmojis(journal.mood)"
+                  :key="`mood-${journal.id}-${moodIndex}`"
+                  class="meta-emoji"
+                >
+                  {{ emoji }}
+                </span>
+              </p>
+              <p class="meta-line" v-if="journal.itinerary">
+                <span class="meta-label">行程:</span>
+                <span
+                  v-for="(emoji, itinIndex) in splitEmojis(journal.itinerary)"
+                  :key="`itinerary-${journal.id}-${itinIndex}`"
+                  class="meta-emoji"
+                >
+                  {{ emoji }}
+                </span>
+              </p>
+            </div>
+            <div class="actions">
+              <button class="icon-btn" @click="openEditModal(journal)">✏️</button>
+              <button class="icon-btn" @click="openDeleteConfirm(journal)">🗑️</button>
+            </div>
           </div>
-          <div class="text-wrapper" :class="{ 'full-width': !journal.photos || journal.photos.length === 0 }">
+
+          <div class="card-media" v-if="journal.photos && journal.photos.length">
+            <div class="carousel">
+              <div
+                class="slides"
+                :style="{ transform: `translateX(-${getSlideIndex(journal.id, journal.photos.length) * 100}%)` }"
+              >
+                <div v-for="(photo, photoIndex) in journal.photos" :key="photoIndex" class="slide">
+                  <img
+                    :src="photo"
+                    alt="Journal photo"
+                    @click="openGallery(journal.photos, photoIndex)"
+                  />
+                </div>
+              </div>
+              <button
+                class="nav nav-prev"
+                @click="moveSlide(journal.id, -1, journal.photos.length)"
+                aria-label="上一張"
+              >
+                ‹
+              </button>
+              <button
+                class="nav nav-next"
+                @click="moveSlide(journal.id, 1, journal.photos.length)"
+                aria-label="下一張"
+              >
+                ›
+              </button>
+              <div class="dots" v-if="journal.photos.length > 1">
+                <button
+                  v-for="(photo, dotIndex) in journal.photos"
+                  :key="`dot-${journal.id}-${dotIndex}`"
+                  :class="{ active: dotIndex === getSlideIndex(journal.id, journal.photos.length) }"
+                  @click="setSlide(journal.id, dotIndex)"
+                ></button>
+              </div>
+              <button
+                class="open-gallery-btn"
+                @click="openGallery(journal.photos, getSlideIndex(journal.id, journal.photos.length))"
+              >
+                開啟圖集
+              </button>
+            </div>
+          </div>
+
+          <div class="card-body">
             <h3>{{ journal.theme }}</h3>
-            <p class="content-text">{{ journal.content }}</p>
+            <p>{{ journal.content }}</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 新增 / 編輯 Modal -->
     <AppModal :is-open="isModalOpen" :title="isEditing ? '編輯日記' : '新增日記'" @close="closeModal">
       <form @submit.prevent="submitForm" class="modal-form">
         <div class="form-row">
@@ -43,58 +123,85 @@
             <label>日期</label>
             <input v-model="form.date" type="date" required />
           </div>
-          <div class="form-group flex-1 sticker-group">
-            <label>選擇心情或貼圖</label>
-            <div v-if="selectedStickers.length" class="selected-stickers">
-              <div class="selected-title">已選貼圖</div>
-              <div class="selected-list">
-                <button
-                  v-for="(sticker, index) in selectedStickers"
-                  :key="`selected-${index}-${sticker}`"
-                  type="button"
-                  class="selected-pill"
-                  @click="removeSticker(index)"
-                >
-                  <span class="emoji">{{ sticker }}</span>
-                  <span class="remove-icon">✕</span>
-                </button>
-              </div>
+          <div class="form-group flex-1">
+            <label>主題</label>
+            <input v-model="form.theme" type="text" placeholder="例如：漫步在海岸線" required />
+          </div>
+        </div>
+
+        <div class="form-row meta-selectors">
+          <div class="form-group flex-1">
+            <label>天氣 (可複選)</label>
+            <div class="selected-pills" v-if="selectedWeather.length">
+              <span v-for="(emoji, index) in selectedWeather" :key="`weather-pill-${index}`">{{ emoji }}</span>
             </div>
-            <div class="sticker-library">
-              <div v-for="category in stickerCategories" :key="category.name" class="sticker-category">
-                <h4 class="category-title">{{ category.name }}</h4>
-                <div class="sticker-grid">
-                  <button 
-                    v-for="sticker in category.items" 
-                    :key="sticker" 
-                    type="button"
-                    class="sticker-btn"
-                    :class="{ active: form.mood.includes(sticker) }"
-                    @click="addSticker(sticker)"
-                  >
-                    {{ sticker }}
-                  </button>
-                </div>
+            <div class="emoji-grid">
+              <button
+                v-for="emoji in weatherEmojiOptions"
+                :key="`weather-${emoji}`"
+                type="button"
+                class="emoji-btn"
+                :class="{ active: form.weather.includes(emoji) }"
+                @click="toggleEmoji('weather', emoji)"
+              >
+                {{ emoji }}
+              </button>
+            </div>
+          </div>
+          <div class="form-group flex-1">
+            <label>心情 (可複選)</label>
+            <div class="selected-pills" v-if="selectedMood.length">
+              <span v-for="(emoji, index) in selectedMood" :key="`mood-pill-${index}`">{{ emoji }}</span>
+            </div>
+            <div class="emoji-grid">
+              <button
+                v-for="emoji in moodEmojiOptions"
+                :key="`mood-${emoji}`"
+                type="button"
+                class="emoji-btn"
+                :class="{ active: form.mood.includes(emoji) }"
+                @click="toggleEmoji('mood', emoji)"
+              >
+                {{ emoji }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>行程貼圖 (可複選)</label>
+          <div class="selected-pills" v-if="selectedItinerary.length">
+            <span v-for="(emoji, index) in selectedItinerary" :key="`itin-pill-${index}`">{{ emoji }}</span>
+          </div>
+          <div class="sticker-library">
+            <div v-for="category in itineraryCategories" :key="category.name" class="sticker-category">
+              <h4 class="category-title">{{ category.name }}</h4>
+              <div class="sticker-grid">
+                <button
+                  v-for="sticker in category.items"
+                  :key="`${category.name}-${sticker}`"
+                  type="button"
+                  class="sticker-btn"
+                  :class="{ active: form.itinerary.includes(sticker) }"
+                  @click="toggleEmoji('itinerary', sticker)"
+                >
+                  {{ sticker }}
+                </button>
               </div>
             </div>
           </div>
         </div>
 
         <div class="form-group">
-          <label>主題</label>
-          <input v-model="form.theme" type="text" placeholder="例如：漫步在美麗的海岸線" required />
-        </div>
-
-        <div class="form-group">
           <label>內容與心得</label>
-          <textarea v-model="form.content" rows="4" placeholder="寫下今天的點點滴滴..." required></textarea>
+          <textarea v-model="form.content" rows="4" placeholder="寫下今天的沿路紀錄..." required></textarea>
         </div>
 
         <div class="form-group">
           <label>上傳照片 (可多張)</label>
           <div class="upload-area">
             <input type="file" accept="image/*" multiple @change="handleFileSelect" ref="fileInput" class="file-input" />
-            <div v-if="form.photos && form.photos.length > 0" class="preview-gallery">
+            <div v-if="form.photos && form.photos.length" class="preview-gallery">
               <div v-for="(photo, index) in form.photos" :key="index" class="preview-item">
                 <img :src="photo" alt="Preview" class="preview-img" />
                 <button type="button" class="remove-photo-btn" @click="removePhoto(index)">✕</button>
@@ -107,7 +214,6 @@
       </form>
     </AppModal>
 
-    <!-- 刪除確認 Modal -->
     <AppModal :is-open="isDeleteModalOpen" title="刪除確認" @close="closeDeleteModal">
       <div class="delete-confirm-content">
         <p>確定要刪除「<strong>{{ deletingJournal?.theme }}</strong>」這篇日記嗎？</p>
@@ -118,11 +224,46 @@
         </div>
       </div>
     </AppModal>
+
+    <teleport to="body">
+      <div v-if="gallery.isOpen" class="gallery-overlay" @click.self="closeGallery">
+        <button class="gallery-close" @click="closeGallery">✕</button>
+        <div class="gallery-frame">
+          <button
+            v-if="gallery.photos.length > 1"
+            class="gallery-nav prev"
+            @click.stop="stepGallery(-1)"
+            aria-label="上一張"
+          >
+            ‹
+          </button>
+          <img :src="currentGalleryPhoto" alt="Gallery item" />
+          <button
+            v-if="gallery.photos.length > 1"
+            class="gallery-nav next"
+            @click.stop="stepGallery(1)"
+            aria-label="下一張"
+          >
+            ›
+          </button>
+        </div>
+        <div class="gallery-thumbs" v-if="gallery.photos.length > 1">
+          <button
+            v-for="(photo, index) in gallery.photos"
+            :key="`thumb-${index}`"
+            :class="{ active: index === gallery.index }"
+            @click="setGalleryIndex(index)"
+          >
+            <img :src="photo" alt="Gallery thumbnail" />
+          </button>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps<{
   tripId: string | string[]
@@ -147,42 +288,29 @@ if (user.value) {
 
 const journals = computed(() => journalsData.value || [])
 
-// --- 新增/編輯 邏輯 ---
 const isModalOpen = ref(false)
 const isEditing = ref(false)
 const editingId = ref<string | null>(null)
 
-  // --- 貼圖庫設定 ---
-const stickerCategories = [
+const weatherEmojiOptions = ['☀️', '🌤️', '⛅', '☁️', '🌧️', '⛈️', '🌩️', '🌦️', '🌫️', '❄️', '🌪️', '🌈']
+const moodEmojiOptions = ['😀', '🥰', '🤩', '😌', '😎', '🤗', '🥳', '🤠', '😴', '🥲', '😭', '😤', '🤯', '😱']
+
+const itineraryCategories = [
   {
-    name: "笑臉與人物",
-    items: [
-      "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "☺️", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥸", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🫣", "🤭", "🤫", "🤥", "😶", "😶‍🌫️", "😐", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😮‍💨", "😵", "😵‍💫", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤑", "🤠", "😈", "👿", "👹", "👺", "🤡", "💩", "👻", "💀", "☠️", "👽", "👾", "🤖"
-    ]
+    name: '動物與大自然',
+    items: ['🐻', '🦊', '🦁', '🐯', '🦌', '🦜', '🦩', '🦋', '🌲', '🌸', '🌊', '🌿', '🍃']
   },
   {
-    name: "動物與大自然",
-    items: [
-      "🐵", "🐒", "🦍", "🦧", "🐶", "🐕", "🦮", "🐕‍🦺", "🐩", "🐺", "🦊", "🦝", "🐱", "🐈", "🐈‍⬛", "🦁", "🐯", "🐅", "🐆", "🐴", "🐎", "🦄", "🦓", "🦌", "🦬", "🐮", "🐂", "🐃", "🐄", "🐷", "🐖", "🐗", "🐽", "🐏", "🐑", "🐐", "🐪", "🐫", "🦙", "🦒", "🐘", "🦣", "🦏", "🦛", "🐭", "🐁", "🐀", "🐹", "🐰", "🐇", "🐿️", "🦫", "🦔", "🦇", "🐻", "🐨", "🐼", "🦥", "🦦", "🦨", "🦘", "🦡", "🐾", "🦃", "🐔", "🐓", "🐣", "🐤", "🐥", "🐦", "🐧", "🕊️", "🦅", "🦆", "🦢", "🦉", "🦤", "🪶", "🦩", "🦚", "🦜", "🐸", "🐊", "🐢", "🦎", "🐉", "🦕", "🐳", "🐋", "🐬", "🦭", "🐟", "🐠", "🐡", "🐙", "🐚", "🪸", "🐌", "🦋", "🐛", "🐝", "🪲", "🐞", "🦗", "🪳", "🕸️", "🦟", "🪰", "🪱", "🦠", "💐", "💮", "🏵️", "🥀", "🌺", "🌼", "🌱", "🌲", "🌳", "🌴", "🌵", "🌾", "🌿", "🍂", "🍃", "🍄", "🌰", "🦀", "🦞", "🦐", "🦑"
-    ]
+    name: '美食與飲料',
+    items: ['🍱', '🍣', '🍜', '🍰', '🍩', '🍻', '🍷', '🍡', '🥐', '🍕', '🍔', '🍓', '🧋']
   },
   {
-    name: "美食與飲料",
-    items: [
-      "🍇", "🍈", "🍉", "🍊", "🍋", "🍌", "🍍", "🥭", "🍎", "🍏", "🍐", "🍑", "🍒", "🍓", "🫐", "🥝", "🍅", "🫒", "🥥", "🥑", "🍆", "🥔", "🥕", "🌽", "🌶️", "🫑", "🥒", "🥬", "🥦", "🧄", "🧅", "🥜", "🫘", "🌰", "🫚", "🫛", "🍄", "🍞", "🥐", "🥖", "🫓", "🥨", "🥯", "🥞", "🧇", "🧀", "🍖", "🍗", "🥩", "🥓", "🍔", "🍟", "🍕", "🌭", "🥪", "🌮", "🌯", "🫔", "🥙", "🧆", "🥚", "🍳", "🥘", "🍲", "🫕", "🥣", "🥗", "🍿", "🧈", "🧂", "🥫", "🍱", "🍘", "🍙", "🍚", "🍛", "🍜", "🍝", "🍠", "🍢", "🍣", "🍤", "🍥", "🥮", "🍡", "🥟", "🥠", "🥡", "🦀", "🦞", "🦐", "🦑", "🦪", "🍦", "🍧", "🍨", "🍩", "🍪", "🎂", "🍰", "🧁", "🥧", "🍫", "🍬", "🍭", "🍮", "🍯", "🍼", "🥛", "☕", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺", "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🧃", "🧉", "🧊", "🥢", "🍽️", "🍴", "🥄", "🔪", "🏺"
-    ]
+    name: '活動',
+    items: ['🎡', '🎢', '🎠', '🏖️', '🚴‍♀️', '🏄‍♂️', '🎨', '🎭', '🎯', '🎳', '🧗‍♀️', '🧘‍♂️']
   },
   {
-    name: "活動",
-    items: [
-      "🎃", "🎄", "🎆", "🎇", "🧨", "✨", "🎈", "🎉", "🎊", "🎋", "🎍", "🎎", "🎏", "🎐", "🎑", "🧧", "🎀", "🎁", "🎗️", "🎟️", "🎫", "🎖️", "🏆", "🏅", "🥇", "🥈", "🥉", "⚽", "⚾", "🥎", "🏀", "🏐", "🏈", "🏉", "🎾", "🥏", "🎳", "🏏", "🏑", "🥍", "🥌", "🏓", "🏸", "🥊", "🥋", "🥅", "⛳", "⛸️", "🎣", "🤿", "🎽", "🎿", "🛷", "🥌", "🎯", "🪀", "🪁", "🔫", "🎱", "🔮", "🪄", "🎮", "🕹️", "🎰", "🎲", "🧩", "🧸", "🪅", "🪩", "🪆", "♠️", "♥️", "♦️", "♣️", "♟️", "🃏", "🀄", "🎴", "🎭", "🖼️", "🎨", "🧵", "🪡", "🧶", "🪢"
-    ]
-  },
-  {
-    name: "旅遊與地標",
-    items: [
-      "🌍", "🌎", "🌏", "🌐", "🗺️", "🗾", "🧭", "🏔️", "⛰️", "🌋", "🗻", "🏕️", "🏖️", "🏜️", "🏝️", "🏞️", "🏟️", "🏛️", "🏗️", "🧱", "🪨", "🪵", "🛖", "🏘️", "🏚️", "🏠", "🏡", "🏢", "🏣", "🏤", "🏥", "🏦", "🏨", "🏩", "🏪", "🏫", "🏬", "🏭", "🏯", "🏰", "💒", "🗼", "🗽", "⛪", "🕌", "🛕", "🕍", "⛩️", "🕋", "⛲", "⛺", "🌁", "🌃", "🏙️", "🌄", "🌅", "🌆", "🌇", "🌉", "♨️", "🎠", "🎡", "🎢", "💈", "🎪", "🚂", "🚃", "🚄", "🚅", "🚆", "🚇", "🚈", "🚉", "🚊", "🚝", "🚞", "🚋", "🚌", "🚍", "🚎", "🚐", "🚑", "🚒", "🚓", "🚔", "🚕", "🚖", "🚗", "🚘", "🚙", "🛻", "🚚", "🚛", "🚜", "🏎️", "🏍️", "🛵", "🦽", "🦼", "🛺", "🚲", "🛴", "🛹", "🛼", "🚏", "🛣️", "🛤️", "🛢️", "⛽", "🚨", "🚥", "🚦", "🛑", "🚧", "⚓", "🛟", "⛵", "🛶", "🚤", "🛳️", "⛴️", "🛥️", "🚢", "✈️", "🛩️", "🛫", "🛬", "🪂", "💺", "🚁", "🚟", "🚠", "🚡", "🛰️", "🚀", "🛸", "🛎️", "🧳", "⌛", "⏳", "⌚", "⏰", "⏱️", "⏲️", "🕰️", "🕛", "🕧", "🕐", "🕜", "🕑", "🕝", "🕒", "🕞", "🕓", "🕟", "🕔", "🕠", "🕕", "🕡", "🕖", "🕢", "🕗", "🕣", "🕘", "🕤", "🕙", "🕥", "🕚", "🕦", "🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘", "🌙", "🌚", "🌛", "🌜", "🌡️", "☀️", "🌝", "🌞", "🪐", "⭐", "🌟", "🌠", "🌌", "☁️", "⛅", "🌤️", "🌥️", "🌦️", "🌧️", "🌨️", "🌩️", "🌪️", "🌫️", "🌬️", "🌀", "🌈", "🌂", "☂️", "☔", "⛱️", "⚡", "❄️", "☃️", "⛄", "☄️", "🔥", "💧", "🌊"
-    ]
+    name: '旅遊與地標',
+    items: ['✈️', '🚆', '🗽', '🗼', '🏰', '🏝️', '🏞️', '🌁', '🏯', '🚠', '🚢', '🛤️']
   }
 ]
 
@@ -191,23 +319,125 @@ const getTodayString = () => {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 }
 
-const form = ref<{ date: string, mood: string, theme: string, content: string, photos: string[] }>({
+const form = ref<{ date: string, theme: string, content: string, photos: string[], weather: string, mood: string, itinerary: string }>({
   date: getTodayString(),
-  mood: '',
   theme: '',
   content: '',
-  photos: []
+  photos: [],
+  weather: '',
+  mood: '',
+  itinerary: ''
 })
 
-const selectedStickers = computed(() => Array.from(form.value.mood || ''))
+const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter('zh-Hant', { granularity: 'grapheme' }) : null
+const splitEmojis = (value?: string | null) => {
+  if (!value) return []
+  if (!segmenter) return Array.from(value)
+  const segments: string[] = []
+  for (const part of segmenter.segment(value)) {
+    if (part.isWordLike || part.segment.trim() !== '') {
+      segments.push(part.segment)
+    }
+  }
+  return segments
+}
+
+const selectedWeather = computed(() => splitEmojis(form.value.weather))
+const selectedMood = computed(() => splitEmojis(form.value.mood))
+const selectedItinerary = computed(() => splitEmojis(form.value.itinerary))
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const isUploading = ref(false)
+const activeSlideByJournal = ref<Record<string, number>>({})
+
+const gallery = ref<{ isOpen: boolean, photos: string[], index: number }>({
+  isOpen: false,
+  photos: [],
+  index: 0
+})
+
+const currentGalleryPhoto = computed(() => gallery.value.photos[gallery.value.index] || '')
+
+const primeSlides = (list: any[]) => {
+  list.forEach((item) => {
+    if (!item?.id) return
+    if (activeSlideByJournal.value[item.id] === undefined) {
+      activeSlideByJournal.value[item.id] = 0
+    }
+  })
+}
+
+watch(journals, (list) => {
+  primeSlides(list)
+}, { immediate: true })
+
+const getSlideIndex = (journalId: string, total: number) => {
+  if (!journalId || !total) return 0
+  if (activeSlideByJournal.value[journalId] === undefined) {
+    activeSlideByJournal.value[journalId] = 0
+  }
+  const current = activeSlideByJournal.value[journalId]
+  return Math.min(Math.max(current, 0), total - 1)
+}
+
+const setSlide = (journalId: string, nextIndex: number) => {
+  if (!journalId) return
+  activeSlideByJournal.value[journalId] = nextIndex
+}
+
+const moveSlide = (journalId: string, direction: number, total: number) => {
+  if (!journalId || !total) return
+  const current = getSlideIndex(journalId, total)
+  const next = (current + direction + total) % total
+  activeSlideByJournal.value[journalId] = next
+}
+
+const openGallery = (photos: string[], startIndex = 0) => {
+  if (!photos || !photos.length) return
+  gallery.value = {
+    isOpen: true,
+    photos,
+    index: Math.min(Math.max(startIndex, 0), photos.length - 1)
+  }
+  if (process.client) {
+    document.body.style.overflow = 'hidden'
+  }
+}
+
+const closeGallery = () => {
+  gallery.value.isOpen = false
+  gallery.value.photos = []
+  gallery.value.index = 0
+  if (process.client) {
+    document.body.style.overflow = ''
+  }
+}
+
+const stepGallery = (delta: number) => {
+  if (!gallery.value.photos.length) return
+  const total = gallery.value.photos.length
+  gallery.value.index = (gallery.value.index + delta + total) % total
+}
+
+const setGalleryIndex = (index: number) => {
+  gallery.value.index = index
+}
+
+const toggleEmoji = (field: 'weather' | 'mood' | 'itinerary', emoji: string) => {
+  const segments = splitEmojis(form.value[field])
+  const position = segments.indexOf(emoji)
+  if (position >= 0) {
+    segments.splice(position, 1)
+  } else {
+    segments.push(emoji)
+  }
+  form.value[field] = segments.join('')
+}
 
 const openAddModal = () => {
   isEditing.value = false
   editingId.value = null
-  form.value = { date: getTodayString(), mood: '', theme: '', content: '', photos: [] }
+  form.value = { date: getTodayString(), theme: '', content: '', photos: [], weather: '', mood: '', itinerary: '' }
   if (fileInput.value) fileInput.value.value = ''
   isModalOpen.value = true
 }
@@ -217,10 +447,12 @@ const openEditModal = (journal: any) => {
   editingId.value = journal.id
   form.value = {
     date: journal.date || getTodayString(),
-    mood: journal.mood || '',
     theme: journal.theme || '',
     content: journal.content || '',
-    photos: journal.photos ? [...journal.photos] : (journal.photoUrl ? [journal.photoUrl] : [])
+    photos: journal.photos ? [...journal.photos] : (journal.photoUrl ? [journal.photoUrl] : []),
+    weather: journal.weather || '',
+    mood: journal.mood || '',
+    itinerary: journal.itinerary || ''
   }
   if (fileInput.value) fileInput.value.value = ''
   isModalOpen.value = true
@@ -229,16 +461,6 @@ const openEditModal = (journal: any) => {
 const closeModal = () => {
   if (isUploading.value) return // 防止上傳中關閉
   isModalOpen.value = false
-}
-
-const addSticker = (sticker: string) => {
-  form.value.mood += sticker
-}
-
-const removeSticker = (index: number) => {
-  const stickers = Array.from(form.value.mood || '')
-  stickers.splice(index, 1)
-  form.value.mood = stickers.join('')
 }
 
 // --- 照片多張上傳邏輯 (轉換為 Base64) ---
@@ -329,176 +551,363 @@ const confirmDelete = async () => {
 
 <style lang="scss" scoped>
 .journal-tab {
-  max-width: 800px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 1.5rem 4rem;
+  background: linear-gradient(135deg, #fff6e8 0%, #fefefe 60%);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 
-  h2 { font-size: 1.5rem; color: #1f2937; margin: 0; }
+  h2 {
+    font-size: 1.75rem;
+    color: #4c3b2c;
+    margin: 0;
+  }
+
   .add-btn {
-    background: #fa8a3e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold;
-    &:hover { background: #ff8a3e; }
+    background: #ffb347;
+    border: none;
+    color: #fff;
+    padding: 0.65rem 1.25rem;
+    border-radius: 999px;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(255, 179, 71, 0.35);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(255, 179, 71, 0.5);
+    }
   }
 }
 
-.empty-state { text-align: center; padding: 3rem; color: #9ca3af; background: white; border-radius: 1rem; border: 1px dashed #d1d5db; }
-
-.journal-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  border: 2px dashed rgba(255, 179, 71, 0.5);
+  border-radius: 1.5rem;
+  color: #a07b4f;
+  background: rgba(255, 255, 255, 0.85);
 }
 
-.journal-card {
-  background: white;
-  border-radius: 1rem;
+.timeline {
+  position: relative;
+  padding: 0 1rem;
+}
+
+.path-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: repeating-linear-gradient(180deg, #ffce76 0 20px, transparent 20px 32px);
+  transform: translateX(-50%);
+}
+
+.journal-stop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 3rem;
+  padding-left: min(55%, 360px);
+
+  &.is-right {
+    padding-left: 0;
+    padding-right: min(55%, 360px);
+    align-items: flex-end;
+
+    .pin {
+      left: auto;
+      right: calc(50% - 8px);
+    }
+
+    .stop-card {
+      align-self: flex-end;
+    }
+  }
+}
+
+.pin {
+  position: absolute;
+  left: calc(50% - 8px);
+  top: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+
+  .pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ff8a3e;
+    box-shadow: 0 0 0 6px rgba(255, 138, 62, 0.25);
+  }
+
+  .pin-arrow {
+    width: 2px;
+    height: 30px;
+    background: #ffb347;
+  }
+}
+
+.stop-card {
+  position: relative;
+  background: #fffef8;
+  border-radius: 1.25rem 1.25rem 1.25rem 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 2px 6px -1px rgba(0,0,0,0.05);
+  box-shadow: 0 12px 30px rgba(76, 59, 44, 0.12);
+  border: 1px solid rgba(255, 179, 71, 0.3);
+  width: min(100%, 520px);
+  transform: translateY(0);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #f3f4f6;
+  gap: 1rem;
+  border-bottom: 1px dashed rgba(76, 59, 44, 0.15);
   padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
 
-  .date-mood {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    .date { font-weight: bold; color: #5A4CFA; font-size: 1.125rem; }
-    .mood-icon { font-size: 1.5rem; }
+.card-heading {
+  .date {
+    margin: 0 0 0.35rem 0;
+    color: #de8c3c;
+    font-weight: 700;
+    letter-spacing: 0.05em;
   }
 
-  .actions {
+  .meta-line {
     display: flex;
-    gap: 0.5rem;
-    .icon-btn {
-      background: none; border: none; cursor: pointer; font-size: 1rem; padding: 0.25rem; border-radius: 0.25rem;
-      &:hover { background: #f3f4f6; }
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    color: #6b5845;
+    margin: 0.15rem 0;
+  }
+
+  .meta-label {
+    font-weight: 600;
+    color: #b68a5f;
+  }
+
+  .meta-emoji {
+    font-size: 1.05rem;
+  }
+
+  .meta-sep {
+    opacity: 0.6;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 0.35rem;
+
+  .icon-btn {
+    border: none;
+    background: rgba(255, 179, 71, 0.15);
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: rgba(255, 179, 71, 0.3);
     }
+  }
+}
+
+.card-media {
+  margin-bottom: 1rem;
+
+  .carousel {
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 179, 71, 0.4);
+    background: #fff;
+  }
+
+  .slides {
+    display: flex;
+    transition: transform 0.4s ease;
+  }
+
+  .slide {
+    min-width: 100%;
+    aspect-ratio: 4 / 3;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: zoom-in;
+    }
+  }
+
+  .nav {
+    position: absolute;
+    bottom: 0.5rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    z-index: 2;
+
+    &.nav-prev {
+      right: 3.25rem;
+    }
+
+    &.nav-next {
+      right: 0.75rem;
+    }
+  }
+
+  .dots {
+    position: absolute;
+    left: 1rem;
+    bottom: 0.85rem;
+    display: flex;
+    gap: 0.35rem;
+
+    button {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      &.active {
+        background: #ff8a3e;
+      }
+    }
+  }
+
+  .open-gallery-btn {
+    position: absolute;
+    right: 0.75rem;
+    bottom: -2.5rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 999px;
+    border: none;
+    background: #ffd8a8;
+    color: #744f2d;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(116, 79, 45, 0.2);
   }
 }
 
 .card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  
-  .photo-gallery {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    width: 100%;
-    
-    .gallery-img {
-      width: 120px;
-      height: 120px;
-      object-fit: cover;
-      border-radius: 0.5rem;
-      border: 1px solid #e5e7eb;
-    }
+  h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.35rem;
+    color: #3d2c20;
   }
 
-  .text-wrapper {
-    flex: 1;
-    min-width: 0;
-
-    h3 { margin: 0 0 0.5rem 0; font-size: 1.25rem; color: #111827; }
-    .content-text {
-      margin: 0; color: #4b5563; font-size: 0.9375rem; line-height: 1.6;
-      white-space: pre-line;
-    }
-    
-    &.full-width {
-      width: 100%;
-    }
+  p {
+    margin: 0;
+    color: #5c4b3d;
+    line-height: 1.7;
+    white-space: pre-line;
   }
 }
 
-/* Modal form styles */
 .modal-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  
+  gap: 1.2rem;
+
   .form-row {
     display: flex;
     gap: 1rem;
     flex-wrap: wrap;
   }
 
-  .flex-1 { flex: 1; min-width: 200px; }
+  .flex-1 {
+    flex: 1;
+    min-width: 220px;
+  }
 
   .form-group {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    
-    label { font-size: 0.875rem; font-weight: bold; color: #374151; }
-    
-    input[type="text"], input[type="date"], select, textarea {
-      padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 1rem;
-      background: white;
-      transition: all 0.2s;
-      &:focus { outline: none; border-color: #5A4CFA; box-shadow: 0 0 0 2px rgba(90, 76, 250, 0.2); }
-    }
-    textarea { resize: vertical; min-height: 100px; }
-  }
 
-  /* Sticker Library */
-  .sticker-group {
-    width: 100%; // Let it take full width below date
-  }
-
-  .selected-stickers {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px dashed rgba(254, 163, 101, 0.4);
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
-
-    .selected-title {
-      font-size: 0.85rem;
+    label {
+      font-size: 0.9rem;
       font-weight: 700;
-      color: #fdba74;
-      margin-bottom: 0.5rem;
+      color: #4c3b2c;
     }
 
-    .selected-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+    input,
+    textarea {
+      padding: 0.75rem;
+      border-radius: 0.65rem;
+      border: 1px solid rgba(76, 59, 44, 0.25);
+      background: #fff;
+      font-size: 1rem;
     }
 
-    .selected-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+  }
+
+  .emoji-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .emoji-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: #fff7ee;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, border 0.2s ease;
+
+    &.active {
+      border-color: #ff8a3e;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(255, 138, 62, 0.25);
+    }
+  }
+
+  .selected-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+
+    span {
       padding: 0.25rem 0.6rem;
       border-radius: 999px;
-      border: 1px solid rgba(254, 163, 101, 0.6);
-      background: rgba(255, 210, 131, 0.2);
-      cursor: pointer;
-      font-size: 1rem;
-      line-height: 1.2;
-      transition: transform 0.2s, background 0.2s;
-
-      .emoji { font-size: 1.25rem; }
-      .remove-icon { font-size: 0.8rem; color: #fb923c; }
-
-      &:hover {
-        transform: translateY(-1px);
-        background: rgba(255, 210, 131, 0.35);
-      }
+      border: 1px dashed rgba(255, 138, 62, 0.5);
+      background: rgba(255, 239, 222, 0.8);
     }
   }
 
@@ -506,125 +915,232 @@ const confirmDelete = async () => {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    background: #f9fafb;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
-    max-height: 250px;
+    max-height: 240px;
     overflow-y: auto;
-    
-    // Custom scrollbar
-    &::-webkit-scrollbar { width: 6px; }
-    &::-webkit-scrollbar-track { background: transparent; }
-    &::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    padding-right: 0.5rem;
 
-    .sticker-category {
-      .category-title {
-        margin: 0 0 0.5rem 0;
-        font-size: 0.875rem;
-        color: #6b7280;
-        /* position: sticky; */ /* 移除釘選效果 */
-        /* top: 0; */
-        background: #f9fafb;
-        padding: 0.25rem 0;
-        z-index: 1;
-        margin-top: 1rem; // Add a little spacing between sets if position sticky is removed
-      }
-      
-      .sticker-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
 
-        .sticker-btn {
-          background: white;
-          border: 1px solid transparent;
-          font-size: 1.5rem;
-          padding: 0.25rem;
-          border-radius: 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          
-          &:hover { transform: scale(1.2); border-color: #d1d5db; }
-          &.active {
-            background: #e0e7ff;
-            border-color: #5A4CFA;
-            transform: scale(1.1);
-            box-shadow: 0 2px 4px rgba(90, 76, 250, 0.2);
-          }
-        }
-      }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(76, 59, 44, 0.2);
+      border-radius: 3px;
     }
   }
 
-  /* Upload Area */
-  .upload-area {
-    border: 2px dashed #d1d5db;
-    padding: 1.5rem;
-    border-radius: 0.5rem;
-    background: #f9fafb;
-    text-align: center;
-    transition: all 0.2s;
+  .sticker-category {
+    border: 1px dashed rgba(76, 59, 44, 0.2);
+    border-radius: 0.85rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.9);
 
-    &:hover { border-color: #9ca3af; }
-    
-    .file-input { 
-      width: 100%; 
-      margin-bottom: 0.5rem; 
-      font-size: 0.875rem;
-      &::file-selector-button {
-        background: white;
-        border: 1px solid #d1d5db;
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        margin-right: 1rem;
-        &:hover { background: #f3f4f6; }
-      }
+    .category-title {
+      margin: 0 0 0.5rem 0;
+      color: #c07b2a;
+      font-size: 0.85rem;
     }
-    
+  }
+
+  .sticker-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .sticker-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: #fff7ee;
+    font-size: 1.2rem;
+    cursor: pointer;
+
+    &.active {
+      border-color: #ff8a3e;
+      background: #ffe7cf;
+      transform: translateY(-1px);
+    }
+  }
+
+  .upload-area {
+    border: 2px dashed rgba(76, 59, 44, 0.3);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.9);
+
+    .file-input {
+      width: 100%;
+      margin-bottom: 0.75rem;
+    }
+
     .preview-gallery {
       display: flex;
       flex-wrap: wrap;
-      gap: 1rem;
-      margin-top: 1rem;
+      gap: 0.75rem;
       justify-content: flex-start;
-      
-      .preview-item {
-        position: relative;
-        width: 100px;
-        height: 100px;
+    }
 
-        .preview-img { width: 100%; height: 100%; border-radius: 0.5rem; object-fit: cover; border: 1px solid #e5e7eb; }
-        .remove-photo-btn {
-          position: absolute; top: -0.5rem; right: -0.5rem; 
-          background: #ef4444; color: white; border: none; 
-          width: 1.5rem; height: 1.5rem; border-radius: 50%; 
-          font-size: 0.75rem; cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          &:hover { background: #dc2626; transform: scale(1.1); }
-        }
+    .preview-item {
+      position: relative;
+      width: 90px;
+      height: 90px;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 0.65rem;
+        border: 1px solid rgba(76, 59, 44, 0.2);
+      }
+
+      .remove-photo-btn {
+        position: absolute;
+        top: -0.35rem;
+        right: -0.35rem;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: none;
+        background: #ef4444;
+        color: #fff;
+        cursor: pointer;
       }
     }
   }
-  
+
   .submit-btn {
-    margin-top: 1rem; background: #5A4CFA; color: white; border: none; padding: 0.875rem; border-radius: 0.5rem; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;
-    &:hover:not(:disabled) { background: #4C3EEA; transform: translateY(-1px); }
-    &:disabled { background: #9ca3af; cursor: not-allowed; }
+    align-self: flex-end;
+    padding: 0.85rem 1.75rem;
+    border-radius: 999px;
+    border: none;
+    background: #ff8a3e;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(255, 138, 62, 0.35);
   }
 }
 
 .delete-confirm-content {
-  padding: 1rem 0; text-align: center;
-  p { margin-bottom: 0.5rem; color: #374151; }
-  .warning-text { color: #dc2626; font-size: 0.875rem; margin-bottom: 1.5rem; }
-  
+  text-align: center;
+  padding: 1rem 0;
+
   .modal-actions {
-    display: flex; justify-content: center; gap: 1rem;
-    .cancel-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; background: white; border-radius: 0.5rem; cursor: pointer; font-weight: bold; color: #374151; &:hover { background: #f3f4f6; } }
-    .delete-btn { background: #fee2e2; border: none; color: #ef4444; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold; &:hover { background: #fca5a5; } }
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+}
+
+.gallery-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 21, 17, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 1000;
+}
+
+.gallery-frame {
+  position: relative;
+  width: min(900px, 90vw);
+  aspect-ratio: 4 / 3;
+  border-radius: 1rem;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+  }
+}
+
+.gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  cursor: pointer;
+
+  &.prev {
+    left: 1rem;
+  }
+
+  &.next {
+    right: 1rem;
+  }
+}
+
+.gallery-close {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.gallery-thumbs {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  button {
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    padding: 0;
+    width: 70px;
+    height: 52px;
+    overflow: hidden;
+    cursor: pointer;
+
+    &.active {
+      border-color: #ffb347;
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .journal-stop,
+  .journal-stop.is-right {
+    padding: 0;
+    align-items: flex-start;
+
+    .pin {
+      display: none;
+    }
+
+    .stop-card {
+      width: 100%;
+    }
+  }
+
+  .path-line {
+    left: 2rem;
   }
 }
 </style>

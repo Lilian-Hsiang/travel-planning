@@ -16,6 +16,7 @@
         <button :class="{ active: activeTab === 'shopping' }" @click="activeTab = 'shopping'">購物清單</button>
         <button :class="{ active: activeTab === 'food' }" @click="activeTab = 'food'">美食清單</button>
         <button :class="{ active: activeTab === 'journal' }" @click="activeTab = 'journal'">旅遊手帳</button>
+        <button :class="{ active: activeTab === 'ledger' }" @click="activeTab = 'ledger'">記帳分帳</button>
       </nav>
     </header>
 
@@ -113,6 +114,11 @@
     <!-- ==================== 4. 旅遊手帳 Tab ==================== -->
     <div v-else-if="activeTab === 'journal'">
       <JournalTab :trip-id="tripId as string" />
+    </div>
+
+    <!-- ==================== 5. 記帳 / 分帳 Tab ==================== -->
+    <div v-else-if="activeTab === 'ledger'">
+      <LedgerTab :trip-id="tripId as string" />
     </div>
 
     <!-- ==================== Modals ==================== -->
@@ -470,7 +476,7 @@ const confirmDelete = async () => {
     }
   }
 
-  .no-days-msg { font-size: 0.875rem; color: #9ca3af; padding: 1rem 0; }
+  .no-days-msg { font-size: 0.875rem; color: #ffffff; padding: 1rem 0; }
 
   .day-btn {
     flex-shrink: 0;
