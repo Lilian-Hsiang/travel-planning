@@ -1,28 +1,27 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const { tripId } = getQuery(event)
+    if (!tripId) {
+      throw createError({ statusCode: 400, message: '缺少旅程 ID' })
+    }
+
+    await ensureTripAccess(event, String(tripId), 'viewer')
 
     const snapshot = await firestore()
       .collection('ledgerEntries')
-      .where('userId', '==', user.uid)
+      .where('tripId', '==', String(tripId))
       .get()
 
-    let entries = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-
-    entries = entries.sort((a: any, b: any) => {
-      const aDate = a.createdAt || ''
-      const bDate = b.createdAt || ''
-      return bDate.localeCompare(aDate)
-    })
-
-    if (tripId) {
-      const tripKey = String(tripId)
-      entries = entries.filter((entry: any) => entry.tripId === tripKey)
-    }
+    const entries = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a: any, b: any) => {
+        const aDate = a.createdAt || ''
+        const bDate = b.createdAt || ''
+        return bDate.localeCompare(aDate)
+      })
 
     return entries
   } catch (error: any) {

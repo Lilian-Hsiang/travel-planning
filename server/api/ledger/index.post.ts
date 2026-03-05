@@ -1,5 +1,5 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 const normalizeSplits = (splits: any[] = []) => {
   return splits.map((split) => ({
@@ -12,7 +12,6 @@ const normalizeSplits = (splits: any[] = []) => {
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const body = await readBody(event)
 
     if (!body?.tripId) {
@@ -23,6 +22,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: '請輸入記帳項目名稱' })
     }
 
+    const { user } = await ensureTripAccess(event, String(body.tripId), 'editor')
+
     const data = {
       tripId: String(body.tripId),
       itemName: String(body.itemName).trim(),
@@ -31,6 +32,7 @@ export default defineEventHandler(async (event) => {
       notes: String(body.notes || '').trim(),
       splits: normalizeSplits(Array.isArray(body.splits) ? body.splits : []),
       userId: user.uid,
+      createdBy: user.uid,
       createdAt: new Date().toISOString(),
     }
 

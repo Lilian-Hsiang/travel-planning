@@ -221,6 +221,21 @@ if (user.value) {
 
 const selectedDay = ref(1)
 
+const formatCollaboratorName = (collab?: CollaboratorEntry) => {
+  if (!collab) return ''
+  if (collab.email) return collab.email
+  if (collab.uid) return `ID:${String(collab.uid).slice(0, 6)}`
+  return ''
+}
+
+const tripEditors = computed(() => {
+  const collabs = Array.isArray(trip.value?.collaborators) ? trip.value?.collaborators : []
+  return collabs
+    .filter((collab) => collab.role === 'editor')
+    .map((collab) => formatCollaboratorName(collab))
+    .filter((name) => Boolean(name))
+})
+
 // 篩選出符合「目前選中天數」的行程
 const filteredItineraries = computed(() => {
   if (!itineraries.value) return []
@@ -611,10 +626,19 @@ const confirmDelete = async () => {
   align-items: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   flex-wrap: wrap;
+  position: relative;
   
   .card-time { font-weight: bold; color: #FEA365; width: 3rem; }
   .card-body {
     flex: 1 1 60%;
+    .card-body-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
     .category { font-size: 0.75rem; background: #FFD283; color: #514137; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-weight: bold; }
     h3 { margin: 0.5rem 0 0.25rem 0; font-size: 1.125rem; }
     p { margin: 0; color: #6b7280; font-size: 0.875rem; }
@@ -623,6 +647,28 @@ const confirmDelete = async () => {
       font-size: 0.8125rem;
       margin: 0.25rem 0 0;
       white-space: pre-line;
+    }
+    .card-editors {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+
+      .label {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .name {
+        background: rgba(16,185,129,0.16);
+        color: #047857;
+        border-radius: 999px;
+        padding: 0.15rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
     }
   }
   .card-actions {

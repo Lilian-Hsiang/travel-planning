@@ -1,24 +1,28 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const tripId = getQuery(event).tripId as string | undefined
-
-    let query = firestore()
-      .collection('itineraries')
-      .where('userId', '==', user.uid) as FirebaseFirestore.Query
-
-    if (tripId) {
-      query = query.where('tripId', '==', tripId)
+    if (!tripId) {
+      throw createError({ statusCode: 400, message: '缺少旅程 ID' })
     }
 
-    const snapshot = await query.orderBy('day').orderBy('time').get()
-    const itineraries = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
+    await ensureTripAccess(event, String(tripId), 'viewer')
+
+    const snapshot = await firestore()
+      .collection('itineraries')
+      .where('tripId', '==', String(tripId))
+      .get()
+
+    const itineraries = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a: any, b: any) => {
+        const dayDiff = (a.day || 0) - (b.day || 0)
+        if (dayDiff !== 0) return dayDiff
+        return String(a.time || '00:00').localeCompare(String(b.time || '00:00'))
+      })
+
     return itineraries
   } catch (error: any) {
     throw createError({ statusCode: error.statusCode || 500, message: error.message })

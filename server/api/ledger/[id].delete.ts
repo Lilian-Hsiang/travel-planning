@@ -1,9 +1,8 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const id = getRouterParam(event, 'id')
 
     if (!id) {
@@ -17,9 +16,12 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, message: 'Ledger entry not found' })
     }
 
-    if (docSnap.data()?.userId !== user.uid) {
-      throw createError({ statusCode: 403, message: 'Forbidden' })
+    const tripId = docSnap.data()?.tripId
+    if (!tripId) {
+      throw createError({ statusCode: 400, message: '此記帳缺少旅程 ID' })
     }
+
+    await ensureTripAccess(event, String(tripId), 'editor')
 
     await docRef.delete()
     return { success: true }

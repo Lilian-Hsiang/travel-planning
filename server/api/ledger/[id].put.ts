@@ -1,5 +1,5 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 const normalizeSplits = (splits: any[] = []) => {
   return splits.map((split) => ({
@@ -12,7 +12,6 @@ const normalizeSplits = (splits: any[] = []) => {
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const id = getRouterParam(event, 'id')
     if (!id) {
       throw createError({ statusCode: 400, message: '缺少記帳 ID' })
@@ -25,9 +24,12 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, message: 'Ledger entry not found' })
     }
 
-    if (docSnap.data()?.userId !== user.uid) {
-      throw createError({ statusCode: 403, message: 'Forbidden' })
+    const tripId = docSnap.data()?.tripId
+    if (!tripId) {
+      throw createError({ statusCode: 400, message: '此記帳缺少旅程 ID' })
     }
+
+    await ensureTripAccess(event, String(tripId), 'editor')
 
     const body = await readBody(event)
     const updates: Record<string, any> = { ...body }

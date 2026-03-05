@@ -200,7 +200,7 @@ const goItinerary = () => {
 
 .btn-primary {
   display: inline-block;
-  background-color: #5A4CFA;
+  background-color: #FEA365;
   color: white;
   padding: 1rem 2rem;
   border-radius: 0.75rem;
@@ -211,7 +211,7 @@ const goItinerary = () => {
 }
 
 .btn-primary:hover {
-  background-color: #4f46e5;
+  background-color: #FFD283;
 }
 
 .cta-login-hint {

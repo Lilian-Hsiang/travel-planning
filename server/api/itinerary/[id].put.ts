@@ -1,9 +1,8 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const id = getRouterParam(event, 'id')
     if (!id) throw createError({ statusCode: 400, message: '缺少行程 ID' })
 
@@ -12,13 +11,16 @@ export default defineEventHandler(async (event) => {
 
     if (!doc.exists) throw createError({ statusCode: 404, message: 'Itinerary not found' })
 
-    // 確認為資料擁有者
-    if (doc.data()?.userId !== user.uid) {
-      throw createError({ statusCode: 403, message: 'Forbidden' })
+    const tripId = doc.data()?.tripId
+    if (!tripId) {
+      throw createError({ statusCode: 400, message: '此行程缺少旅程 ID' })
     }
+
+    await ensureTripAccess(event, String(tripId), 'editor')
 
     const body = await readBody(event)
     delete body.userId // 防止覆蓋 userId
+    delete body.tripId
 
     await docRef.update(body)
 

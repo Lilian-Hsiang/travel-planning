@@ -8,15 +8,24 @@ export default defineEventHandler(async (event) => {
     
     const body = await readBody(event)
     
-    // 寫入資料時，強制綁定 userId
+    const timestamp = new Date().toISOString()
+
+    // 寫入資料時，強制綁定 userId 並初始化協作欄位
     const tripData = {
       ...body,
       userId: user.uid,
-      createdAt: new Date().toISOString()
+      ownerEmail: user.email || null,
+      collaborators: [],
+      collaboratorUids: [],
+      collaboratorEmails: [],
+      inviteTokens: [],
+      shareLinkRole: 'viewer',
+      createdAt: timestamp,
+      updatedAt: timestamp,
     }
     
     const docRef = await firestore().collection('trips').add(tripData)
-    return { id: docRef.id, ...tripData }
+    return { id: docRef.id, ...tripData, accessRole: 'owner' }
   } catch (error: any) {
     throw createError({ statusCode: error.statusCode || 500, message: error.message })
   }
