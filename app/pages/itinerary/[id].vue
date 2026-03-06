@@ -473,7 +473,16 @@ const confirmDelete = async () => {
       
       h2 { margin: 0; font-size: 1.25rem; color: #1f2937; }
       .add-day-btn {
-        background: #fff5e3; color: #ff8d41; border: none; padding: 0.35rem 0.75rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: bold; transition: background 0.2s;
+        background: #fff5e3; 
+        color: #ff8d41;
+        border: none; 
+        padding: 0.5rem 0.9rem; 
+        border-radius: 999px;
+        cursor: pointer; 
+        font-size: 0.875rem; 
+        font-weight: 700;
+        font-weight: bold; 
+        transition: background 0.2s;
         &:hover { background: #ffe6bb; }
       }
     }
@@ -530,7 +539,16 @@ const confirmDelete = async () => {
     
     h2 { margin: 0; font-size: 1.5rem; color: #1f2937; }
     .add-item-btn {
-      background: #fa8a3e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold;
+      background: #fa8a3e; 
+      color: white; 
+      border: none; 
+      padding: 0.65rem 1.4rem;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer; font-weight: bold;
+      box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
+      transition: transform 0.2s ease;
+      &:hover { transform: translateY(-2px); }
       &:disabled { background: #d1d5db; cursor: not-allowed; }
     }
   }
