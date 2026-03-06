@@ -21,10 +21,6 @@
       <div v-for="place in places" :key="place.id" class="place-card">
         <div class="card-header">
           <h3>{{ place.name }}</h3>
-          <div class="actions" v-if="canEdit">
-            <button class="edit-btn" @click="openEditModal(place)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
-            <button class="delete-btn" @click="openDeleteConfirm(place)"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
-          </div>
         </div>
         <p class="location">
           📍 <a :href="getMapUrl(place.location)" target="_blank" class="location-link">{{ place.location }}</a>
@@ -50,6 +46,11 @@
             />
             <button type="submit" :disabled="!canEdit || !newItemNames[place.id]?.trim()">＋</button>
           </form>
+        </div>
+
+        <div class="card-actions" v-if="canEdit">
+          <button class="edit-btn" @click="openEditModal(place)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
+          <button class="delete-btn" @click="openDeleteConfirm(place)"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
         </div>
       </div>
     </div>
@@ -312,23 +313,27 @@ const deleteItem = async (place: any, itemId: string) => {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
+  min-height: 320px;
 }
-  .edit-btn,
-  .delete-btn {
-    padding: 0.5rem 0.5rem;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  .edit-btn {
-    background: #9FAF64;
-    color: white;
-  }
-  .delete-btn {
-    background: #ff8d41;
-    color: white;
-  }
+
+.edit-btn,
+.delete-btn {
+  padding: 0.5rem;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.edit-btn {
+  background: #9FAF64;
+  color: white;
+}
+
+.delete-btn {
+  background: #ff8d41;
+  color: white;
+}
 
 .card-header {
   display: flex;
@@ -341,19 +346,6 @@ const deleteItem = async (place: any, itemId: string) => {
     color: #111827;
   }
 
-  .actions {
-    display: flex;
-    gap: 0.5rem;
-    .icon-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 0.25rem;
-      border-radius: 0.25rem;
-      &:hover { background: #f3f4f6; }
-    }
-  }
 }
 
 .location {
@@ -370,9 +362,12 @@ const deleteItem = async (place: any, itemId: string) => {
 }
 
 .items-section {
-  margin-top: auto;
+  margin-top: 1rem;
   border-top: 1px solid #f3f4f6;
   padding-top: 1rem;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 
   h4 {
     margin: 0 0 0.75rem 0;
@@ -442,6 +437,14 @@ const deleteItem = async (place: any, itemId: string) => {
       &:disabled { opacity: 0.5; cursor: not-allowed; }
     }
   }
+}
+
+.card-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  align-self: flex-end;
 }
 
 /* Modals styles */

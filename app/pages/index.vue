@@ -74,6 +74,12 @@ const goItinerary = () => {
 </script>
 
 <style scoped>
+:global(html, body) {
+  margin: 0;
+  padding: 0;
+  background-color: #fff5e3;
+}
+
 .home-container {
   min-height: 100vh;
   background-color: #fff5e3;
@@ -90,13 +96,11 @@ const goItinerary = () => {
   background-color: #FFD283;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-
 .logo {
   font-size: 1.5rem;
   font-weight: bold;
   color: #1f2937;
 }
-
 .auth-section {
   display: flex;
   align-items: center;

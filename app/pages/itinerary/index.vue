@@ -80,12 +80,7 @@
                 class="share-trip-btn"
                 title="查看共編資訊"
               >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M12 15.5A3.5 3.5 0 1 0 12 22.5 3.5 3.5 0 0 0 12 15.5zm7.94-2.09l1.92-1.11a1 1 0 0 0 .37-1.37l-1.83-3.17a1 1 0 0 0-1.28-.4l-1.96.82a7.05 7.05 0 0 0-2.06-1.2l-.3-2.1A1 1 0 0 0 13.82 4h-3.64a1 1 0 0 0-.98.88l-.3 2.1a7.05 7.05 0 0 0-2.06 1.2l-1.96-.82a1 1 0 0 0-1.28.4L1.77 10A1 1 0 0 0 2.14 11.4l1.92 1.11a7.45 7.45 0 0 0 0 2l-1.92 1.11a1 1 0 0 0-.37 1.37l1.83 3.17a1 1 0 0 0 1.28.4l1.96-.82a7.05 7.05 0 0 0 2.06 1.2l.3 2.1a1 1 0 0 0 .98.88h3.64a1 1 0 0 0 .98-.88l.3-2.1a7.05 7.05 0 0 0 2.06-1.2l1.96.82a1 1 0 0 0 1.28-.4l1.83-3.17a1 1 0 0 0-.37-1.37l-1.92-1.11a7.45 7.45 0 0 0 0-2z"
-                    fill="currentColor"
-                  />
-                </svg>
+                <FontAwesomeIcon :icon="['fas', 'gear']" aria-hidden="true" />
               </button>
             </div>
 
@@ -614,10 +609,10 @@ const collaboratorPreview = (trip) => {
     }
 
     .share-trip-btn {
-      color: #4c1d95;
+      color: #FFD283;
       svg { width: 1.1rem; height: 1.1rem; }
 
-      &:hover { background: #4c1d95; color: white; }
+      &:hover { background: #FFD283; color: white; }
     }
 
     .delete-trip-btn {
@@ -742,7 +737,7 @@ const collaboratorPreview = (trip) => {
   align-items: center;
   padding: 1rem 1.25rem;
   border-radius: 0.9rem;
-  background: linear-gradient(135deg, #dbeafe, #e0e7ff);
+  background: linear-gradient(135deg, #fff5e3, #FFD283);
 
   .label {
     margin: 0;
@@ -804,7 +799,7 @@ const collaboratorPreview = (trip) => {
     border: none;
     border-radius: 0.6rem;
     padding: 0.6rem 1.5rem;
-    background: #5a4cfa;
+    background: #ff8a3e;
     color: white;
     font-weight: 600;
     cursor: pointer;

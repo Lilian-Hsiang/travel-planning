@@ -20,6 +20,13 @@ const { toasts } = useToast()
 </script>
 
 <style scoped>
+:global(html, body, #__nuxt) {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #fff5e3;
+}
+
 .toast-container {
   position: fixed;
   top: 16px;
