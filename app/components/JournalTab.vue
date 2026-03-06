@@ -4,7 +4,6 @@
       <h2>旅遊手帳</h2>
       <button
         @click="openAddModal"
-          if (!canEdit.value) return
         class="add-btn"
         :disabled="!canEdit"
         :title="!canEdit ? '僅檢視權限，無法新增' : ''"
@@ -13,119 +12,96 @@
       </button>
     </div>
 
-          if (!canEdit.value) return
     <div v-if="pending" class="empty-state">載入中...</div>
     <div v-else-if="journals.length === 0" class="empty-state">
       目前還沒有日記喔，快來記錄你的旅程吧！
     </div>
 
-    <div v-else class="timeline">
-      <div class="path-line"></div>
-      <div
-        v-for="(journal, index) in journals"
-        :key="journal.id"
-        class="journal-stop"
-        :class="{ 'is-right': index % 2 === 1 }"
-      >
-        <div class="pin">
-          <div class="pin-dot"></div>
-          <div class="pin-arrow"></div>
-          if (!canEdit.value) return
-        </div>
-        <div class="stop-card">
-          <div class="card-header">
-            <div class="card-heading">
-              <p class="date">{{ journal.date }}</p>
-              <p class="meta-line" v-if="journal.weather || journal.mood">
-                <span class="meta-label">天氣:</span>
-                <span
-                  v-for="(emoji, weatherIndex) in splitEmojis(journal.weather)
-                    "
-                  :key="`weather-${journal.id}-${weatherIndex}`"
-                  class="meta-emoji"
-                >
-                  {{ emoji }}
-                </span>
-                <span class="meta-sep">-</span>
-                <span class="meta-label">心情:</span>
-                <span
-                  v-for="(emoji, moodIndex) in splitEmojis(journal.mood)"
-                  :key="`mood-${journal.id}-${moodIndex}`"
-          if (!canEdit.value) return
-                  class="meta-emoji"
-                >
-                  {{ emoji }}
-                </span>
-              </p>
-          if (!canEdit.value) return
-              <p class="meta-line" v-if="journal.itinerary">
-                <span class="meta-label">行程:</span>
-                <span
-                  v-for="(emoji, itinIndex) in splitEmojis(journal.itinerary)"
-                  :key="`itinerary-${journal.id}-${itinIndex}`"
-                  class="meta-emoji"
-                >
-                  {{ emoji }}
-                </span>
-              </p>
-            </div>
-            <div class="actions" v-if="canEdit">
-              <button class="icon-btn" @click="openEditModal(journal)">✏️</button>
-              <button class="icon-btn" @click="openDeleteConfirm(journal)">🗑️</button>
-            </div>
+    <div v-else class="journal-grid">
+      <article v-for="journal in journals" :key="journal.id" class="journal-card">
+        <div class="card-header">
+          <div class="card-heading">
+            <p class="date">{{ journal.date }}</p>
+            <p class="meta-line" v-if="journal.weather || journal.mood">
+              <span class="meta-label">天氣:</span>
+              <span
+                v-for="(emoji, weatherIndex) in splitEmojis(journal.weather)"
+                :key="`weather-${journal.id}-${weatherIndex}`"
+                class="meta-emoji"
+              >
+                {{ emoji }}
+              </span>
+              <br/>
+              <span class="meta-label">心情:</span>
+              <span
+                v-for="(emoji, moodIndex) in splitEmojis(journal.mood)"
+                :key="`mood-${journal.id}-${moodIndex}`"
+                class="meta-emoji"
+              >
+                {{ emoji }}
+              </span>
+            </p>
+            <p class="meta-line" v-if="journal.itinerary">
+              <span class="meta-label">行程:</span>
+              <span
+                v-for="(emoji, itinIndex) in splitEmojis(journal.itinerary)"
+                :key="`itinerary-${journal.id}-${itinIndex}`"
+                class="meta-emoji"
+              >
+                {{ emoji }}
+              </span>
+            </p>
           </div>
-
-          <div class="card-media" v-if="journal.photos && journal.photos.length">
-            <div class="carousel">
-              <div
-                class="slides"
-                :style="{ transform: `translateX(-${getSlideIndex(journal.id, journal.photos.length) * 100}%)` }"
-              >
-                <div v-for="(photo, photoIndex) in journal.photos" :key="photoIndex" class="slide">
-                  <img
-                    :src="photo"
-                    alt="Journal photo"
-                    @click="openGallery(journal.photos, photoIndex)"
-                  />
-                </div>
-              </div>
-              <button
-                class="nav nav-prev"
-                @click="moveSlide(journal.id, -1, journal.photos.length)"
-                aria-label="上一張"
-              >
-                ‹
-              </button>
-              <button
-                class="nav nav-next"
-                @click="moveSlide(journal.id, 1, journal.photos.length)"
-                aria-label="下一張"
-              >
-                ›
-              </button>
-              <div class="dots" v-if="journal.photos.length > 1">
-                <button
-                  v-for="(photo, dotIndex) in journal.photos"
-                  :key="`dot-${journal.id}-${dotIndex}`"
-                  :class="{ active: dotIndex === getSlideIndex(journal.id, journal.photos.length) }"
-                  @click="setSlide(journal.id, dotIndex)"
-                ></button>
-              </div>
-              <button
-                class="open-gallery-btn"
-                @click="openGallery(journal.photos, getSlideIndex(journal.id, journal.photos.length))"
-              >
-                開啟圖集
-              </button>
-            </div>
-          </div>
-
-          <div class="card-body">
-            <h3>{{ journal.theme }}</h3>
-            <p>{{ journal.content }}</p>
+          <div class="actions" v-if="canEdit">
+            <button class="icon-btn" @click="openEditModal(journal)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
+            <button class="icon-btn delete" @click="openDeleteConfirm(journal)"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
           </div>
         </div>
-      </div>
+
+        <div class="card-media" v-if="journal.photos && journal.photos.length">
+          <div class="carousel">
+            <div
+              class="slides"
+              :style="{ transform: `translateX(-${getSlideIndex(journal.id, journal.photos.length) * 100}%)` }"
+            >
+              <div v-for="(photo, photoIndex) in journal.photos" :key="photoIndex" class="slide">
+                <img
+                  :src="photo"
+                  alt="Journal photo"
+                  @click="openGallery(journal.photos, photoIndex)"
+                />
+              </div>
+            </div>
+            <button
+              class="nav nav-prev"
+              @click="moveSlide(journal.id, -1, journal.photos.length)"
+              aria-label="上一張"
+            >
+              ‹
+            </button>
+            <button
+              class="nav nav-next"
+              @click="moveSlide(journal.id, 1, journal.photos.length)"
+              aria-label="下一張"
+            >
+              ›
+            </button>
+            <div class="dots" v-if="journal.photos.length > 1">
+              <button
+                v-for="(photo, dotIndex) in journal.photos"
+                :key="`dot-${journal.id}-${dotIndex}`"
+                :class="{ active: dotIndex === getSlideIndex(journal.id, journal.photos.length) }"
+                @click="setSlide(journal.id, dotIndex)"
+              ></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <h3>{{ journal.theme }}</h3>
+          <p>{{ journal.content }}</p>
+        </div>
+      </article>
     </div>
 
     <AppModal :is-open="isModalOpen" :title="isEditing ? '編輯日記' : '新增日記'" @close="closeModal">
@@ -568,7 +544,7 @@ const confirmDelete = async () => {
   max-width: 960px;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
-  background: linear-gradient(135deg, #fff6e8 0%, #fefefe 60%);
+  // background: linear-gradient(135deg, #fff6e8 0%, #fefefe 60%);
 }
 
 .header {
@@ -578,19 +554,19 @@ const confirmDelete = async () => {
   margin-bottom: 2.5rem;
 
   h2 {
-    font-size: 1.75rem;
-    color: #4c3b2c;
-    margin: 0;
+      margin: 0;
+      font-size: 1.6rem;
+      color: #3c2f23;
   }
 
   .add-btn {
-    background: #ffb347;
+    background: #ff8a3e;
     border: none;
     color: #fff;
     padding: 0.65rem 1.25rem;
     border-radius: 999px;
     font-weight: 700;
-    box-shadow: 0 6px 18px rgba(255, 179, 71, 0.35);
+    box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 
@@ -610,77 +586,21 @@ const confirmDelete = async () => {
   background: rgba(255, 255, 255, 0.85);
 }
 
-.timeline {
-  position: relative;
-  padding: 0 1rem;
+.journal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.75rem;
 }
 
-.path-line {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: repeating-linear-gradient(180deg, #ffce76 0 20px, transparent 20px 32px);
-  transform: translateX(-50%);
-}
-
-.journal-stop {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 3rem;
-  padding-left: min(55%, 360px);
-
-  &.is-right {
-    padding-left: 0;
-    padding-right: min(55%, 360px);
-    align-items: flex-end;
-
-    .pin {
-      left: auto;
-      right: calc(50% - 8px);
-    }
-
-    .stop-card {
-      align-self: flex-end;
-    }
-  }
-}
-
-.pin {
-  position: absolute;
-  left: calc(50% - 8px);
-  top: 0.35rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-
-  .pin-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #ff8a3e;
-    box-shadow: 0 0 0 6px rgba(255, 138, 62, 0.25);
-  }
-
-  .pin-arrow {
-    width: 2px;
-    height: 30px;
-    background: #ffb347;
-  }
-}
-
-.stop-card {
-  position: relative;
+.journal-card {
   background: #fffef8;
-  border-radius: 1.25rem 1.25rem 1.25rem 0.75rem;
-  padding: 1.5rem;
-  box-shadow: 0 12px 30px rgba(76, 59, 44, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  box-shadow: 0 12px 28px rgba(76, 59, 44, 0.12);
   border: 1px solid rgba(255, 179, 71, 0.3);
-  width: min(100%, 520px);
-  transform: translateY(0);
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
 }
 
 .card-header {
@@ -728,23 +648,24 @@ const confirmDelete = async () => {
   display: flex;
   gap: 0.35rem;
 
-  .icon-btn {
-    border: none;
-    background: rgba(255, 179, 71, 0.15);
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: background 0.2s ease;
+.icon-btn {
+      border: none;
+      background: #9FAF64;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
 
-    &:hover {
-      background: rgba(255, 179, 71, 0.3);
-    }
+      &.delete {
+        background: #ff8d41;
+        color: white;
+      }
   }
 }
 
 .card-media {
+  position: relative;
   margin-bottom: 1rem;
 
   .carousel {
@@ -767,6 +688,7 @@ const confirmDelete = async () => {
     img {
       width: 100%;
       height: 100%;
+      display: block;
       object-fit: cover;
       cursor: zoom-in;
     }
@@ -774,22 +696,23 @@ const confirmDelete = async () => {
 
   .nav {
     position: absolute;
-    bottom: 0.5rem;
-    width: 34px;
-    height: 34px;
+    top: 50%;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     border: none;
-    background: rgba(0, 0, 0, 0.35);
+    background: #ffb24786;
     color: #fff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     z-index: 2;
+    transform: translateY(-50%);
 
     &.nav-prev {
-      right: 3.25rem;
+      left: 0.75rem;
     }
 
     &.nav-next {
@@ -799,18 +722,26 @@ const confirmDelete = async () => {
 
   .dots {
     position: absolute;
-    left: 1rem;
-    bottom: 0.85rem;
+    left: 50%;
+    bottom: -1.1rem;
+    transform: translateX(-50%);
     display: flex;
-    gap: 0.35rem;
+    gap: 0.4rem;
 
     button {
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       border: none;
       background: rgba(255, 255, 255, 0.6);
       cursor: pointer;
+      padding: 0;
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+
       &.active {
         background: #ff8a3e;
       }
@@ -820,7 +751,7 @@ const confirmDelete = async () => {
   .open-gallery-btn {
     position: absolute;
     right: 0.75rem;
-    bottom: -2.5rem;
+    bottom: 0;
     padding: 0.35rem 0.75rem;
     font-size: 0.85rem;
     border-radius: 999px;
@@ -1139,22 +1070,17 @@ const confirmDelete = async () => {
 }
 
 @media (max-width: 768px) {
-  .journal-stop,
-  .journal-stop.is-right {
-    padding: 0;
-    align-items: flex-start;
-
-    .pin {
-      display: none;
-    }
-
-    .stop-card {
-      width: 100%;
-    }
+  .journal-grid {
+    grid-template-columns: 1fr;
   }
 
-  .path-line {
-    left: 2rem;
+  .card-media {
+    padding-bottom: 2.75rem;
+
+    .nav {
+      width: 32px;
+      height: 32px;
+    }
   }
 }
 </style>

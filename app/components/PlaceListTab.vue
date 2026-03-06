@@ -271,9 +271,9 @@ const deleteItem = async (place: any, itemId: string) => {
   margin-bottom: 2rem;
 
   h2 {
-    font-size: 1.5rem;
-    color: #1f2937;
-    margin: 0;
+      margin: 0;
+      font-size: 1.6rem;
+      color: #3c2f23;
   }
 
   .add-btn {
