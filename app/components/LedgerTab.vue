@@ -408,16 +408,16 @@ const toggleSettlement = async (entry: any, splitId: string) => {
 
     .icon-btn {
       border: none;
-      background: rgba(255, 171, 92, 0.15);
+      background: #9FAF64;
+      color: white;
       width: 34px;
       height: 34px;
       border-radius: 50%;
       cursor: pointer;
-      color: #7a6149;
 
       &.delete {
-        background: rgba(239, 75, 64, 0.12);
-        color: #d33e2c;
+        background: #ff8d41;
+        color: white;
       }
     }
   }

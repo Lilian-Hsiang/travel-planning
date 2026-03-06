@@ -2,9 +2,18 @@
   <div class="journal-tab">
     <div class="header">
       <h2>旅遊手帳</h2>
-      <button @click="openAddModal" class="add-btn">+ 新增日記</button>
+      <button
+        @click="openAddModal"
+          if (!canEdit.value) return
+        class="add-btn"
+        :disabled="!canEdit"
+        :title="!canEdit ? '僅檢視權限，無法新增' : ''"
+      >
+        + 新增日記
+      </button>
     </div>
 
+          if (!canEdit.value) return
     <div v-if="pending" class="empty-state">載入中...</div>
     <div v-else-if="journals.length === 0" class="empty-state">
       目前還沒有日記喔，快來記錄你的旅程吧！
@@ -21,6 +30,7 @@
         <div class="pin">
           <div class="pin-dot"></div>
           <div class="pin-arrow"></div>
+          if (!canEdit.value) return
         </div>
         <div class="stop-card">
           <div class="card-header">
@@ -41,11 +51,13 @@
                 <span
                   v-for="(emoji, moodIndex) in splitEmojis(journal.mood)"
                   :key="`mood-${journal.id}-${moodIndex}`"
+          if (!canEdit.value) return
                   class="meta-emoji"
                 >
                   {{ emoji }}
                 </span>
               </p>
+          if (!canEdit.value) return
               <p class="meta-line" v-if="journal.itinerary">
                 <span class="meta-label">行程:</span>
                 <span
@@ -57,7 +69,7 @@
                 </span>
               </p>
             </div>
-            <div class="actions">
+            <div class="actions" v-if="canEdit">
               <button class="icon-btn" @click="openEditModal(journal)">✏️</button>
               <button class="icon-btn" @click="openDeleteConfirm(journal)">🗑️</button>
             </div>
@@ -267,6 +279,7 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps<{
   tripId: string | string[]
+  accessRole?: 'owner' | 'editor' | 'viewer'
 }>()
 
 const { authFetch } = useAuthFetch()
@@ -287,6 +300,7 @@ if (user.value) {
 }
 
 const journals = computed(() => journalsData.value || [])
+const canEdit = computed(() => ['owner', 'editor'].includes(props.accessRole || 'viewer'))
 
 const isModalOpen = ref(false)
 const isEditing = ref(false)

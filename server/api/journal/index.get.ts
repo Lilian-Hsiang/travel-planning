@@ -1,15 +1,15 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const tripId = getQuery(event).tripId as string | undefined
+    await ensureTripAccess(event, tripId, 'viewer')
 
-    let query = firestore().collection('journals').where('userId', '==', user.uid)
-    if (tripId) query = query.where('tripId', '==', tripId)
-
-    const snapshot = await query.get()
+    const snapshot = await firestore()
+      .collection('journals')
+      .where('tripId', '==', tripId)
+      .get()
     const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     
     // Sort in memory to avoid needing a Firestore Composite Index

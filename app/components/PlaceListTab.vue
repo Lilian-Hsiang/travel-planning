@@ -2,7 +2,14 @@
   <div class="place-list-tab">
     <div class="header">
       <h2>{{ title }}</h2>
-      <button @click="openAddModal" class="add-btn">+ 新增{{ placeLabel }}</button>
+      <button
+        @click="openAddModal"
+        class="add-btn"
+        :disabled="!canEdit"
+        :title="!canEdit ? '僅檢視權限，無法新增' : ''"
+      >
+        + 新增{{ placeLabel }}
+      </button>
     </div>
 
     <div v-if="pending" class="empty-state">載入中...</div>
@@ -14,7 +21,7 @@
       <div v-for="place in places" :key="place.id" class="place-card">
         <div class="card-header">
           <h3>{{ place.name }}</h3>
-          <div class="actions">
+          <div class="actions" v-if="canEdit">
             <button class="edit-btn" @click="openEditModal(place)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
             <button class="delete-btn" @click="openDeleteConfirm(place)"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
           </div>
@@ -28,15 +35,20 @@
           <ul class="items-list">
             <li v-for="item in (place.items || [])" :key="item.id" class="item-row">
               <label class="checkbox-label">
-                <input type="checkbox" :checked="item.isCompleted" @change="toggleItem(place, item.id)" />
+                <input type="checkbox" :checked="item.isCompleted" @change="toggleItem(place, item.id)" :disabled="!canEdit" />
                 <span :class="{ completed: item.isCompleted }">{{ item.name }}</span>
               </label>
-              <button class="delete-item-btn" @click="deleteItem(place, item.id)">✕</button>
+              <button class="delete-item-btn" @click="deleteItem(place, item.id)" :disabled="!canEdit">✕</button>
             </li>
           </ul>
           <form @submit.prevent="addItem(place)" class="add-item-form">
-            <input v-model="newItemNames[place.id]" type="text" :placeholder="`新增${itemLabel}...`" />
-            <button type="submit" :disabled="!newItemNames[place.id]?.trim()">＋</button>
+            <input
+              v-model="newItemNames[place.id]"
+              type="text"
+              :placeholder="`新增${itemLabel}...`"
+              :disabled="!canEdit"
+            />
+            <button type="submit" :disabled="!canEdit || !newItemNames[place.id]?.trim()">＋</button>
           </form>
         </div>
       </div>
@@ -77,6 +89,7 @@ import { ref, computed } from 'vue'
 const props = defineProps<{
   listType: 'shopping' | 'food'
   tripId: string | string[]
+  accessRole?: 'owner' | 'editor' | 'viewer'
 }>()
 
 const { authFetch } = useAuthFetch()
@@ -86,6 +99,7 @@ const title = computed(() => props.listType === 'shopping' ? '購物清單' : '�
 const placeLabel = computed(() => props.listType === 'shopping' ? '店家' : '餐廳')
 const itemLabel = computed(() => props.listType === 'shopping' ? '購物' : '必吃')
 const apiPath = computed(() => `/api/${props.listType}`)
+const canEdit = computed(() => ['owner', 'editor'].includes(props.accessRole || 'viewer'))
 
 const { data: placesData, pending, refresh } = await useAsyncData(
   `${props.listType}-${props.tripId}`,
@@ -110,6 +124,7 @@ const editingId = ref<string | null>(null)
 const form = ref({ name: '', location: '' })
 
 const openAddModal = () => {
+  if (!canEdit.value) return
   isEditing.value = false
   editingId.value = null
   form.value = { name: '', location: '' }
@@ -117,6 +132,7 @@ const openAddModal = () => {
 }
 
 const openEditModal = (place: any) => {
+  if (!canEdit.value) return
   isEditing.value = true
   editingId.value = place.id
   form.value = { name: place.name, location: place.location }
@@ -128,6 +144,7 @@ const closeModal = () => {
 }
 
 const submitForm = async () => {
+  if (!canEdit.value) return
   try {
     if (isEditing.value && editingId.value) {
       await authFetch(`${apiPath.value}/${editingId.value}`, {
@@ -152,6 +169,7 @@ const isDeleteModalOpen = ref(false)
 const deletingPlace = ref<any>(null)
 
 const openDeleteConfirm = (place: any) => {
+  if (!canEdit.value) return
   deletingPlace.value = place
   isDeleteModalOpen.value = true
 }
@@ -162,6 +180,7 @@ const closeDeleteModal = () => {
 }
 
 const confirmDelete = async () => {
+  if (!canEdit.value) return
   if (!deletingPlace.value) return
   try {
     await authFetch(`${apiPath.value}/${deletingPlace.value.id}`, { method: 'DELETE' })
@@ -184,6 +203,7 @@ const newItemNames = ref<Record<string, string>>({})
 const generateId = () => Math.random().toString(36).substring(2, 9)
 
 const addItem = async (place: any) => {
+  if (!canEdit.value) return
   const name = newItemNames.value[place.id]?.trim()
   if (!name) return
 
@@ -204,6 +224,7 @@ const addItem = async (place: any) => {
 }
 
 const toggleItem = async (place: any, itemId: string) => {
+  if (!canEdit.value) return
   const updatedItems = (place.items || []).map((item: any) => {
     if (item.id === itemId) return { ...item, isCompleted: !item.isCompleted }
     return item
@@ -221,6 +242,7 @@ const toggleItem = async (place: any, itemId: string) => {
 }
 
 const deleteItem = async (place: any, itemId: string) => {
+  if (!canEdit.value) return
   const updatedItems = (place.items || []).filter((item: any) => item.id !== itemId)
 
   try {

@@ -103,17 +103,28 @@
 
     <!-- ==================== 2. 購物清單 Tab ==================== -->
     <div v-else-if="activeTab === 'shopping'">
-      <PlaceListTab list-type="shopping" :trip-id="tripId as string" />
+      <PlaceListTab
+        list-type="shopping"
+        :trip-id="tripId as string"
+        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+      />
     </div>
 
     <!-- ==================== 3. 美食清單 Tab ==================== -->
     <div v-else-if="activeTab === 'food'">
-      <PlaceListTab list-type="food" :trip-id="tripId as string" />
+      <PlaceListTab
+        list-type="food"
+        :trip-id="tripId as string"
+        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+      />
     </div>
 
     <!-- ==================== 4. 旅遊手帳 Tab ==================== -->
     <div v-else-if="activeTab === 'journal'">
-      <JournalTab :trip-id="tripId as string" />
+      <JournalTab
+        :trip-id="tripId as string"
+        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+      />
     </div>
 
     <!-- ==================== 5. 記帳 / 分帳 Tab ==================== -->

@@ -1,16 +1,19 @@
 import { firestore } from '../../plugins/firebase-admin'
-import { requireAuth } from '../../utils/auth'
+import { ensureTripAccess } from '../../utils/tripAccess'
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await requireAuth(event)
     const body = await readBody(event)
+    const tripId = body.tripId as string | undefined
+    const { user } = await ensureTripAccess(event, tripId, 'editor')
 
     const data = {
       ...body,
+      tripId,
       userId: user.uid,
-      items: body.items || [], 
-      createdAt: new Date().toISOString()
+      items: body.items || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }
 
     const docRef = await firestore().collection('shopping').add(data)
