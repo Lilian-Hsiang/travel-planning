@@ -26,9 +26,9 @@
             <button @click="loginWithGoogle" class="btn-login google">
               <span class="icon">G</span> Google 登入
             </button>
-            <button @click="loginWithLine" class="btn-login line">
+            <!-- <button @click="loginWithLine" class="btn-login line">
               <span class="icon">L</span> LINE 登入
-            </button>
+            </button> -->
           </div>
         </template>
         <span v-else class="loading-text">載入中...</span>

@@ -67,7 +67,7 @@ export const useAuth = () => {
 			const name = result.user?.displayName || result.user?.email || '旅人'
 			if (process.client) {
 				sessionStorage.setItem(toastKey, `哈囉! ${name}，請開啟你的旅程吧!`)
-				window.location.href = '/itinerary'
+				window.location.href = '/'
 			}
 		} catch (error) {
 			console.error('Google 登入失敗:', error)
@@ -87,7 +87,7 @@ export const useAuth = () => {
 			const name = result.user?.displayName || result.user?.email || '旅人'
 			if (process.client) {
 				sessionStorage.setItem(toastKey, `哈囉! ${name}，請開啟你的旅程吧!`)
-				window.location.href = '/itinerary'
+				window.location.href = '/'
 			}
 		} catch (error) {
 			console.error('LINE 登入失敗:', error)

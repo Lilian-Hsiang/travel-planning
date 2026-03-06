@@ -94,16 +94,28 @@
               <h2>{{ trip.name }}</h2>
               <p>{{ trip.startDate }} ~ {{ trip.endDate }}</p>
               <span class="card-role-pill" :class="trip.accessRole">{{ roleLabel(trip.accessRole) }}</span>
-              <div v-if="collaboratorPreview(trip).length" class="collab-preview">
+              <div
+                v-if="trip.accessRole === 'owner' && collaboratorPreview(trip).length"
+                class="collab-preview"
+              >
                 <span class="preview-label">共編者:</span>
                 <span
                   v-for="(name, idx) in collaboratorPreview(trip)"
-                  :key="`${trip.id}-collab-${idx}`"
+                  :key="`${trip.id}-owner-collab-${idx}`"
                   class="preview-pill"
                 >
                   {{ name }}
                 </span>
               </div>
+              <div
+                v-else-if="ownerLabel(trip)"
+                class="collab-preview"
+              >
+                <span class="preview-label">擁有者:</span>
+                <span class="preview-pill owner-pill">
+                  {{ ownerLabel(trip) }}
+                </span>
+              </div>    
             </div>
           </NuxtLink>
         </div>
@@ -310,6 +322,11 @@ const canManageShare = computed(() => {
   const role = shareTarget.value?.accessRole || 'viewer'
   return role === 'owner' || role === 'editor'
 })
+
+const ownerLabel = (trip) => {
+  if (!trip) return ''
+  return trip.ownerEmail || trip.ownerName || ''
+}
 
 onMounted(() => {
   if (process.client) {
