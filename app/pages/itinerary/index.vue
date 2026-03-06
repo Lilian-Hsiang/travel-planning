@@ -529,15 +529,17 @@ const collaboratorPreview = (trip) => {
   h1 { font-size: 1.75rem; color: #1f2937; margin: 0; }
   
   .add-btn {
-    background: #FEA365;
-    color: white;
+    align-self: flex-start;
+    background: #ff8a3e;
     border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.75rem;
-    font-weight: bold;
+    color: white;
+    padding: 0.65rem 1.4rem;
+    border-radius: 999px;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.2s;
-    &:hover { background: #FFD283; }
+    box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
+    transition: transform 0.2s ease;
+    &:hover { transform: translateY(-2px); }
   }
 }
 

@@ -121,7 +121,17 @@
           <div class="form-group flex-1">
             <label>天氣 (可複選)</label>
             <div class="selected-pills" v-if="selectedWeather.length">
-              <span v-for="(emoji, index) in selectedWeather" :key="`weather-pill-${index}`">{{ emoji }}</span>
+              <button
+                v-for="(emoji, index) in selectedWeather"
+                :key="`weather-pill-${index}`"
+                type="button"
+                class="pill"
+                @click="toggleEmoji('weather', emoji)"
+                :aria-label="`移除${emoji}`"
+              >
+                <span class="pill-emoji">{{ emoji }}</span>
+                <span class="pill-remove" aria-hidden="true">✕</span>
+              </button>
             </div>
             <div class="emoji-grid">
               <button
@@ -139,7 +149,17 @@
           <div class="form-group flex-1">
             <label>心情 (可複選)</label>
             <div class="selected-pills" v-if="selectedMood.length">
-              <span v-for="(emoji, index) in selectedMood" :key="`mood-pill-${index}`">{{ emoji }}</span>
+              <button
+                v-for="(emoji, index) in selectedMood"
+                :key="`mood-pill-${index}`"
+                type="button"
+                class="pill"
+                @click="toggleEmoji('mood', emoji)"
+                :aria-label="`移除${emoji}`"
+              >
+                <span class="pill-emoji">{{ emoji }}</span>
+                <span class="pill-remove" aria-hidden="true">✕</span>
+              </button>
             </div>
             <div class="emoji-grid">
               <button
@@ -159,7 +179,17 @@
         <div class="form-group">
           <label>行程貼圖 (可複選)</label>
           <div class="selected-pills" v-if="selectedItinerary.length">
-            <span v-for="(emoji, index) in selectedItinerary" :key="`itin-pill-${index}`">{{ emoji }}</span>
+            <button
+              v-for="(emoji, index) in selectedItinerary"
+              :key="`itin-pill-${index}`"
+              type="button"
+              class="pill"
+              @click="toggleEmoji('itinerary', emoji)"
+              :aria-label="`移除${emoji}`"
+            >
+              <span class="pill-emoji">{{ emoji }}</span>
+              <span class="pill-remove" aria-hidden="true">✕</span>
+            </button>
           </div>
           <div class="sticker-library">
             <div v-for="category in itineraryCategories" :key="category.name" class="sticker-category">
@@ -848,11 +878,28 @@ const confirmDelete = async () => {
     flex-wrap: wrap;
     gap: 0.35rem;
 
-    span {
-      padding: 0.25rem 0.6rem;
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.55rem;
       border-radius: 999px;
       border: 1px dashed rgba(255, 138, 62, 0.5);
-      background: rgba(255, 239, 222, 0.8);
+      background: rgba(255, 239, 222, 0.9);
+      cursor: pointer;
+      font-size: 1rem;
+      color: #6b4c2f;
+      transition: background 0.2s ease, border-color 0.2s ease;
+
+      &:hover {
+        background: rgba(255, 214, 183, 0.95);
+        border-color: rgba(255, 138, 62, 0.8);
+      }
+
+      .pill-remove {
+        font-size: 0.85rem;
+        color: #bb6c2d;
+      }
     }
   }
 
@@ -917,7 +964,7 @@ const confirmDelete = async () => {
     background: rgba(255, 255, 255, 0.9);
 
     .file-input {
-      width: 100%;
+      width: 90%;
       margin-bottom: 0.75rem;
     }
 

@@ -2,17 +2,18 @@
   <div class="home-container">
     <!-- 導覽列 -->
     <header class="header">
-      <div class="logo">✈️ Travel Planner</div>
+      <div class="logo">Travel Planner</div>
       
       <div class="auth-section">
         <template v-if="!loading">
           <!-- 已登入狀態 -->
           <div v-if="user" class="user-profile">
             <img 
-              v-if="user.photoURL" 
+              v-if="user.photoURL && !avatarError" 
               :src="user.photoURL" 
               alt="avatar" 
               class="avatar" 
+              @error="avatarError = true"
             />
             <div v-else class="avatar-placeholder">
               {{ user.displayName ? user.displayName[0] : 'U' }}
@@ -53,10 +54,16 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue'
 
 // 引入我們剛剛建立的 composable
 const { user, loading, loginWithGoogle, loginWithLine, handleSignOut } = useAuth()
 const router = useRouter()
+const avatarError = ref(false)
+
+watch(() => user.value?.photoURL, () => {
+  avatarError.value = false
+})
 
 const goItinerary = () => {
   // 先嘗試 Nuxt 路由，若有問題則改用硬導向
@@ -69,8 +76,10 @@ const goItinerary = () => {
 <style scoped>
 .home-container {
   min-height: 100vh;
-  background-color: #f9fafb;
+  background-color: #fff5e3;
   font-family: sans-serif;
+  padding: 0;
+  margin: 0;
 }
 
 .header {
@@ -78,7 +87,7 @@ const goItinerary = () => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background-color: white;
+  background-color: #FFD283;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
@@ -110,7 +119,7 @@ const goItinerary = () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #5A4CFA;
+  background-color: #ff8636;
   color: white;
   display: flex;
   align-items: center;
@@ -125,15 +134,17 @@ const goItinerary = () => {
 
 .btn-logout {
   padding: 0.5rem 1rem;
-  border: 1px solid #e5e7eb;
-  background: white;
+  border: none;
+  background: #FEA365;
+  color: white;
+  font-weight: bold;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .btn-logout:hover {
-  background: #f3f4f6;
+  transform: translateY(-2px);
 }
 
 .login-buttons {
@@ -201,17 +212,21 @@ const goItinerary = () => {
 .btn-primary {
   display: inline-block;
   background-color: #FEA365;
+  border:none;
+  border-radius: 999px;
   color: white;
   padding: 1rem 2rem;
   border-radius: 0.75rem;
   text-decoration: none;
   font-size: 1.25rem;
   font-weight: bold;
-  transition: background 0.2s;
+  transition: transform 0.2s ease;
+  box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
+  cursor: pointer;
 }
 
 .btn-primary:hover {
-  background-color: #FFD283;
+   transform: translateY(-2px);
 }
 
 .cta-login-hint {
