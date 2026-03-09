@@ -8,7 +8,7 @@
           <FontAwesomeIcon :icon="['fas', 'arrow-left']" class="back-icon" aria-hidden="true" />
           返回我的旅程
         </NuxtLink>
-        <h1 class="trip-title">{{ trip?.name || '載入中...' }}</h1>
+        <h1 class="trip-title">{{ trip?.name || '載入中...' }}<img src="/pudding3.png" width="30" height="30" style="padding-left: 0.5rem; padding-top: 0.2rem;" /></h1>
       </div>
       
       <nav class="trip-tabs">

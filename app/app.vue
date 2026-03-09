@@ -1,5 +1,6 @@
 <template>
   <div>
+    <VitePwaManifest />
     <NuxtPage />
 
     <div class="toast-container">

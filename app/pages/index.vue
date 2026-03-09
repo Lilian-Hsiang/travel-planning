@@ -2,7 +2,10 @@
   <div class="home-container">
     <!-- 導覽列 -->
     <header class="header">
-      <div class="logo">Travel Planner</div>
+      <div class="title-section">
+        <img src="/pudding.png" alt="" width="50" height="50" style="object-fit: contain;">
+        <div class="logo">Travel Planner</div>
+      </div>
       
       <div class="auth-section">
         <template v-if="!loading">
@@ -73,7 +76,7 @@ const goItinerary = () => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 :global(html, body) {
   margin: 0;
   padding: 0;
@@ -95,11 +98,35 @@ const goItinerary = () => {
   padding: 1rem 2rem;
   background-color: #FFD283;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  
+  @media (max-width: 640px) {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .title-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    
+    @media (max-width: 640px) {
+      .logo {
+        max-width: 100px;
+        line-height: 1.2;
+      }
+    }
+  }
 }
 .logo {
   font-size: 1.5rem;
   font-weight: bold;
   color: #1f2937;
+  
+  @media (max-width: 640px) {
+    font-size: 1.2rem;
+    white-space: normal;
+    word-break: break-word;
+  }
 }
 .auth-section {
   display: flex;
@@ -110,6 +137,19 @@ const goItinerary = () => {
   display: flex;
   align-items: center;
   gap: 1rem;
+  
+  @media (max-width: 640px) {
+    gap: 0.5rem;
+    
+    .user-name {
+      display: none; /* 在手機版隱藏使用者名稱，節省空間 */
+    }
+    
+    .avatar, .avatar-placeholder {
+      width: 32px;
+      height: 32px;
+    }
+  }
 }
 
 .avatar {
@@ -145,6 +185,12 @@ const goItinerary = () => {
   border-radius: 0.5rem;
   cursor: pointer;
   transition: background 0.2s;
+  white-space: nowrap;
+  
+  @media (max-width: 640px) {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
 }
 
 .btn-logout:hover {

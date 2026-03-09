@@ -630,7 +630,10 @@ const collaboratorPreview = (trip) => {
   
   .card-cover {
     height: 120px;
-    background: linear-gradient(135deg, #FFD283 0%, #FEA365 100%);
+    // background: linear-gradient(135deg, #FFD283 0%, #FEA365 100%);
+    background-image: url("/pudding_bg.jpg");
+    background-size: cover;
+    background-position: center;
     display: flex;
     align-items: center;
     justify-content: center;
