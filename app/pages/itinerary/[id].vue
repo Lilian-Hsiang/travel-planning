@@ -17,6 +17,7 @@
         <button :class="{ active: activeTab === 'food' }" @click="activeTab = 'food'">美食清單</button>
         <button :class="{ active: activeTab === 'journal' }" @click="activeTab = 'journal'">旅遊手帳</button>
         <button :class="{ active: activeTab === 'ledger' }" @click="activeTab = 'ledger'">記帳分帳</button>
+        <button :class="{ active: activeTab === 'luggage' }" @click="activeTab = 'luggage'">行李清單</button>
       </nav>
     </header>
 
@@ -130,6 +131,14 @@
     <!-- ==================== 5. 記帳 / 分帳 Tab ==================== -->
     <div v-else-if="activeTab === 'ledger'">
       <LedgerTab :trip-id="tripId as string" />
+    </div>
+
+    <!-- ==================== 6. 行李清單 Tab ==================== -->
+    <div v-else-if="activeTab === 'luggage'">
+      <PackingListTab
+        :trip-id="tripId as string"
+        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+      />
     </div>
 
     <!-- ==================== Modals ==================== -->

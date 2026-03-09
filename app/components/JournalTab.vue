@@ -305,7 +305,14 @@ if (user.value) {
   refresh()
 }
 
-const journals = computed(() => journalsData.value || [])
+const journals = computed(() => {
+  const list = journalsData.value || []
+  return [...list].sort((a, b) => {
+    const dateA = new Date(a.date).getTime() || 0
+    const dateB = new Date(b.date).getTime() || 0
+    return dateA - dateB
+  })
+})
 const canEdit = computed(() => ['owner', 'editor'].includes(props.accessRole || 'viewer'))
 
 const isModalOpen = ref(false)
