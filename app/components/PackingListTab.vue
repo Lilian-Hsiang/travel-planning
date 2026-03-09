@@ -211,7 +211,7 @@ const deleteItem = async (itemId: string) => {
     align-items: center;
     margin-bottom: 2rem;
 
-    h2 { margin: 0; font-size: 1.5rem; color: #1f2937; }
+    h2 { margin: 0; font-size: 1.5rem; color: #3c2f23; }
     .add-btn {
       background: #fa8a3e; color: white; border: none; padding: 0.5rem 1rem;
       border-radius: 999px; font-weight: bold; cursor: pointer;

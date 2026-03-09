@@ -669,6 +669,11 @@ const confirmDelete = async () => {
   .card-time { font-weight: bold; color: #FEA365; width: 3rem; }
   .card-body {
     flex: 1 1 60%;
+    
+    @media (max-width: 640px) {
+      padding-bottom: 2.5rem; /* 預留空間給右下角的按鈕 */
+    }
+    
     .card-body-header {
       display: flex;
       justify-content: space-between;
@@ -713,6 +718,12 @@ const confirmDelete = async () => {
     display: flex;
     // flex-direction: column;
     gap: 0.5rem;
+    
+    @media (max-width: 640px) {
+      position: absolute;
+      bottom: 1.25rem;
+      right: 1.25rem;
+    }
   }
   .edit-btn,
   .delete-btn {
