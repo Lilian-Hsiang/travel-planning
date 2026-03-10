@@ -33,15 +33,24 @@
             <span>狀態</span>
           </div>
           <div v-for="split in entry.splits || []" :key="split.id" class="split-row">
-            <span class="split-name">{{ split.name }}</span>
-            <span class="split-amount">NT$ {{ formatCurrency(split.amount) }}</span>
-            <button
-              class="status-pill"
-              :class="{ settled: split.isSettled }"
-              @click="toggleSettlement(entry, split.id)"
-            >
-              {{ split.isSettled ? '已結清' : '待結清' }}
-            </button>
+            <div class="split-item">
+              <span class="split-label">成員</span>
+              <span class="split-name">{{ split.name }}</span>
+            </div>
+            <div class="split-item">
+              <span class="split-label">應付金額</span>
+              <span class="split-amount">NT$ {{ formatCurrency(split.amount) }}</span>
+            </div>
+            <div class="split-item">
+              <span class="split-label">狀態</span>
+              <button
+                class="status-pill"
+                :class="{ settled: split.isSettled }"
+                @click="toggleSettlement(entry, split.id)"
+              >
+                {{ split.isSettled ? '已結清' : '待結清' }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -442,13 +451,21 @@ const toggleSettlement = async (entry: any, splitId: string) => {
   .split-row {
     display: grid;
     grid-template-columns: 1fr 1fr auto;
-    align-items: center;
+    // align-items: center;
     padding: 0.5rem 0.25rem;
     font-size: 0.9rem;
     color: #574539;
 
     & + .split-row {
       border-top: 1px solid #f3efe8;
+    }
+
+    .split-label {
+      display: none;
+    }
+
+    .split-item {
+      display: contents;
     }
 
     .split-name {
@@ -645,7 +662,52 @@ const toggleSettlement = async (entry: any, splitId: string) => {
 }
 
 @media (max-width: 640px) {
-  .split-list .split-row,
+  .split-list {
+    .split-head {
+      display: none !important;
+    }
+
+    .split-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: #fafaf9;
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+      border: none;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .split-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .split-label {
+        display: block;
+        font-size: 0.8rem;
+        color: #a79281;
+        font-weight: 600;
+        min-width: 80px;
+        flex-shrink: 0;
+      }
+
+      .split-name,
+      .split-amount {
+        flex: 1;
+        text-align: left;
+      }
+
+      .status-pill {
+        margin-left: 0;
+      }
+    }
+  }
+
   .split-editor-row {
     grid-template-columns: 1fr;
     gap: 0.35rem;
@@ -657,8 +719,12 @@ const toggleSettlement = async (entry: any, splitId: string) => {
   }
 
   .card-summary {
-    flex-direction: column;
-    align-items: flex-start;
+    font-size: 0.8rem;
+    gap: 0.75rem;
+    
+    span {
+      white-space: nowrap;
+    }
   }
 }
 </style>

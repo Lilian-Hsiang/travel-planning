@@ -194,7 +194,7 @@
           <p v-else class="helper-text warning">你沒有權限邀請成員。</p>
         </section>
 
-        <section class="share-section">
+        <!-- <section class="share-section">
           <div class="section-head">
             <h4>邀請連結</h4>
             <p>複製連結給朋友，他們登入後即可加入</p>
@@ -215,20 +215,30 @@
             </select>
           </label>
           <p v-if="isUpdatingShareLinkRole" class="helper-text info">儲存預設權限中...</p>
-        </section>
+        </section> -->
 
         <section class="share-section">
           <div class="section-head">
             <h4>已加入的成員</h4>
-            <p>目前僅支援新增與查看，移除功能尚未完成</p>
           </div>
           <ul v-if="shareCollaborators.length" class="collaborator-list">
             <li v-for="collab in shareCollaborators" :key="collab.email || collab.uid">
-              <div>
-                <strong>{{ collab.email || collab.uid }}</strong>
-                <span>{{ collab.uid }}</span>
+              <div class="collab-info">
+                <div>
+                  <strong>{{ collab.email || collab.uid }}</strong>
+                  <span>{{ collab.uid }}</span>
+                </div>
+                <span class="role-pill" :class="collab.role">{{ roleLabel(collab.role) }}</span>
               </div>
-              <span class="role-pill" :class="collab.role">{{ roleLabel(collab.role) }}</span>
+              <button
+                v-if="shareTarget?.accessRole === 'owner'"
+                class="btn-remove"
+                :disabled="isRemovingMember"
+                @click="handleRemoveMember(collab)"
+                title="移除成員"
+              >
+                <font-awesome-icon icon="trash" />
+              </button>
             </li>
           </ul>
           <p v-else class="helper-text">目前沒有其他成員。</p>
@@ -236,6 +246,34 @@
       </div>
       <div v-else class="share-modal empty">
         <p>請選擇旅程後再分享。</p>
+      </div>
+    </AppModal>
+
+    <!-- 確認移除成員 Modal -->
+    <AppModal :is-open="isRemoveMemberModalOpen" title="確認移除成員" @close="closeRemoveMemberModal">
+      <div v-if="memberToRemove" class="confirm-modal">
+        <p class="confirm-message">
+          確定要移除成員 <strong>{{ memberToRemove.email || memberToRemove.uid }}</strong> 嗎？
+        </p>
+        <p class="confirm-warning">
+          移除後，該成員將無法再存取此旅程。
+        </p>
+        <div class="modal-actions">
+          <button 
+            class="btn btn-secondary" 
+            @click="closeRemoveMemberModal"
+            :disabled="isRemovingMember"
+          >
+            取消
+          </button>
+          <button 
+            class="btn btn-danger" 
+            @click="confirmRemoveMember"
+            :disabled="isRemovingMember"
+          >
+            {{ isRemovingMember ? '移除中...' : '確認移除' }}
+          </button>
+        </div>
       </div>
     </AppModal>
   </div>
@@ -469,6 +507,55 @@ const roleLabel = (role) => {
 }
 const activeRoleLabel = computed(() => roleLabel(shareTarget.value?.accessRole || 'owner'))
 
+const isRemoveMemberModalOpen = ref(false)
+const memberToRemove = ref(null)
+const isRemovingMember = ref(false)
+
+const handleRemoveMember = (collab) => {
+  if (!shareTarget.value) return
+  if (shareTarget.value.accessRole !== 'owner') {
+    pushToast('只有擁有者可以移除成員', 'error')
+    return
+  }
+
+  memberToRemove.value = collab
+  isRemoveMemberModalOpen.value = true
+}
+
+const closeRemoveMemberModal = () => {
+  isRemoveMemberModalOpen.value = false
+  memberToRemove.value = null
+}
+
+const confirmRemoveMember = async () => {
+  if (!shareTarget.value || !memberToRemove.value) return
+
+  isRemovingMember.value = true
+  try {
+    const params = new URLSearchParams()
+    if (memberToRemove.value.email) params.append('email', memberToRemove.value.email)
+    if (memberToRemove.value.uid) params.append('uid', memberToRemove.value.uid)
+    
+    const response = await authFetch(
+      `/api/trips/${shareTarget.value.id}/sharing/remove-member?${params.toString()}`,
+      { method: 'DELETE' }
+    )
+    
+    shareCollaborators.value = Array.isArray(response.collaborators) ? response.collaborators : []
+    updateActiveTripCache(shareTarget.value.id, {
+      collaborators: shareCollaborators.value,
+      collaboratorEmails: deriveCollaboratorEmails(shareCollaborators.value),
+    })
+    pushToast('已移除成員', 'success')
+  } catch (error) {
+    const message = error?.data?.message || '移除失敗'
+    pushToast(message, 'error')
+  } finally {
+    isRemovingMember.value = false
+    closeRemoveMemberModal()
+  }
+}
+
 const formatCollaboratorName = (collab) => {
   if (!collab) return ''
   if (collab.email) return collab.email
@@ -531,6 +618,7 @@ const collaboratorPreview = (trip) => {
     padding: 0.65rem 1.4rem;
     border-radius: 999px;
     font-weight: 700;
+    font-size: 0.9rem;
     cursor: pointer;
     box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
     transition: transform 0.2s ease;
@@ -734,6 +822,85 @@ const collaboratorPreview = (trip) => {
   }
 }
 
+/* 確認移除成員 modal */
+.confirm-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+
+  .confirm-message {
+    font-size: 1rem;
+    color: #374151;
+    margin: 0;
+    line-height: 1.6;
+
+    strong {
+      color: #ef4444;
+      font-weight: 600;
+    }
+  }
+
+  .confirm-warning {
+    font-size: 0.9rem;
+    color: #f97316;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    background: #fff7ed;
+    border-left: 3px solid #f97316;
+    border-radius: 0.5rem;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+
+    .btn {
+      padding: 0.65rem 1.5rem;
+      border-radius: 0.6rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-size: 0.95rem;
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+
+      &:hover:not(:disabled) {
+        background: #e5e7eb;
+      }
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: #dc2626;
+      }
+    }
+
+    @media (max-width: 640px) {
+      flex-direction: column-reverse;
+
+      .btn {
+        width: 100%;
+        padding: 0.75rem;
+      }
+    }
+  }
+}
+
 .share-target-card {
   display: flex;
   justify-content: space-between;
@@ -741,6 +908,7 @@ const collaboratorPreview = (trip) => {
   padding: 1rem 1.25rem;
   border-radius: 0.9rem;
   background: linear-gradient(135deg, #fff5e3, #FFD283);
+  gap: 1rem;
 
   .label {
     margin: 0;
@@ -750,17 +918,36 @@ const collaboratorPreview = (trip) => {
     color: #6b7280;
   }
 
-  h3 { margin: 0.15rem 0 0.25rem; }
-  span { color: #374151; font-size: 0.9rem; }
+  h3 { 
+    margin: 0.15rem 0 0.25rem;
+    word-break: break-word;
+  }
+  
+  span { 
+    color: #374151; 
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+
+    .role-pill {
+      align-self: flex-start;
+    }
+  }
 }
 
 .role-pill {
   padding: 0.35rem 0.9rem;
   border-radius: 999px;
   background: rgba(76,29,149,0.12);
-  color: #4c1d95;
+  color: #95431d;
   font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &.viewer { background: rgba(96,165,250,0.2); color: #1d4ed8; }
   &.editor { background: rgba(16,185,129,0.2); color: #047857; }
@@ -807,6 +994,7 @@ const collaboratorPreview = (trip) => {
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s;
+    white-space: nowrap;
   }
 
   button:disabled {
@@ -816,6 +1004,11 @@ const collaboratorPreview = (trip) => {
 
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+
+    button {
+      padding: 0.75rem;
+    }
   }
 }
 
@@ -831,20 +1024,16 @@ const collaboratorPreview = (trip) => {
 .link-row {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 
   input {
     flex: 1;
+    min-width: 200px;
     transition: background 0.2s;
-  }
-
-  button:disabled {
-    background: #4b5563;
-    cursor: not-allowed;
     border: 1px solid #e5e7eb;
     border-radius: 0.6rem;
     padding: 0.6rem 0.75rem;
     font-size: 0.9rem;
-    background: #f9fafb;
   }
 
   button {
@@ -854,14 +1043,29 @@ const collaboratorPreview = (trip) => {
     background: #111827;
     color: white;
     cursor: pointer;
-  }
-    transition: border 0.2s, background 0.2s;
+    transition: background 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &:disabled {
+      background: #f9fafb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      border: 1px solid #e5e7eb;
+    }
   }
 
-  select:disabled {
-    background: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
+  @media (max-width: 640px) {
+    input {
+      min-width: unset;
+      width: 100%;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.75rem;
+    }
+  }
 }
 
 .inline-label {
@@ -893,9 +1097,84 @@ const collaboratorPreview = (trip) => {
     padding: 0.75rem 1rem;
     border: 1px solid #e5e7eb;
     border-radius: 0.75rem;
+    gap: 1rem;
 
-    strong { display: block; font-size: 0.95rem; }
-    span { display: block; font-size: 0.8rem; color: #9ca3af; }
+    .collab-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex: 1;
+      gap: 1rem;
+      flex-wrap: wrap;
+
+      > div {
+        flex: 1;
+        min-width: 140px;
+      }
+
+      .role-pill {
+        flex-shrink: 0;
+      }
+    }
+
+    strong { 
+      display: block; 
+      font-size: 0.95rem;
+      word-break: break-word;
+    }
+    
+    span { 
+      display: block; 
+      font-size: 0.8rem; 
+      color: #9ca3af;
+      word-break: break-all;
+    }
+
+    @media (max-width: 640px) {
+      padding: 0.9rem;
+      gap: 0.75rem;
+
+      .collab-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+
+        > div {
+          min-width: unset;
+        }
+
+        .role-pill {
+          align-self: flex-start;
+        }
+      }
+    }
+  }
+
+  .btn-remove {
+    padding: 0.4rem;
+    background: transparent;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+
+    &:hover:not(:disabled) {
+      background: #ef4444;
+      color: white;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 }
 </style>
