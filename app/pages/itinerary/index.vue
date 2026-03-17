@@ -172,7 +172,7 @@
         <section class="share-section">
           <div class="section-head">
             <h4>邀請成員</h4>
-            <p>輸入 Email，可指定可編輯或僅檢視</p>
+            <p>輸入 Email，可指定可編輯或僅檢視，並選擇可編輯的頁面</p>
           </div>
           <form class="invite-form" @submit.prevent="handleSendInvite">
             <input
@@ -190,6 +190,20 @@
               {{ isSendingInvite ? '送出中...' : '送出' }}
             </button>
           </form>
+          <div v-if="shareInviteForm.role === 'editor'" class="permissions-selector">
+            <p class="permissions-label">可編輯的頁面：</p>
+            <div class="permissions-grid">
+              <label v-for="tab in allTabOptions" :key="tab.key" class="perm-checkbox">
+                <input
+                  type="checkbox"
+                  :value="tab.key"
+                  v-model="shareInviteForm.permissions"
+                  :disabled="!canManageShare || isSendingInvite"
+                />
+                {{ tab.label }}
+              </label>
+            </div>
+          </div>
           <p v-if="canManageShare" class="helper-text">提交後成員會立即擁有對應權限。</p>
           <p v-else class="helper-text warning">你沒有權限邀請成員。</p>
         </section>
@@ -227,18 +241,68 @@
                 <div>
                   <strong>{{ collab.email || collab.uid }}</strong>
                   <span>{{ collab.uid }}</span>
+
+                  <!-- 編輯模式 -->
+                  <template v-if="editingMemberEmail === (collab.email || collab.uid)">
+                    <div class="inline-edit-section">
+                      <label class="inline-edit-label">角色：</label>
+                      <select v-model="editingMemberRole" class="inline-edit-select">
+                        <option value="editor">可編輯</option>
+                        <option value="viewer">僅檢視</option>
+                      </select>
+                    </div>
+                    <div v-if="editingMemberRole === 'editor'" class="permissions-selector compact">
+                      <p class="permissions-label">可編輯的頁面：</p>
+                      <div class="permissions-grid">
+                        <label v-for="tab in allTabOptions" :key="tab.key" class="perm-checkbox">
+                          <input
+                            type="checkbox"
+                            :value="tab.key"
+                            v-model="editingMemberPermissions"
+                          />
+                          {{ tab.label }}
+                        </label>
+                      </div>
+                    </div>
+                    <div class="inline-edit-actions">
+                      <button class="btn-save" :disabled="isSavingMemberEdit" @click="saveEditMember(collab)">
+                        {{ isSavingMemberEdit ? '儲存中...' : '儲存' }}
+                      </button>
+                      <button class="btn-cancel" @click="cancelEditMember">取消</button>
+                    </div>
+                  </template>
+
+                  <!-- 顯示模式 -->
+                  <template v-else>
+                    <div v-if="collab.role === 'editor' && collab.permissions && collab.permissions.length" class="perm-tags">
+                      <span
+                        v-for="perm in collab.permissions"
+                        :key="perm"
+                        class="perm-tag"
+                      >{{ tabLabelMap[perm] || perm }}</span>
+                    </div>
+                  </template>
                 </div>
                 <span class="role-pill" :class="collab.role">{{ roleLabel(collab.role) }}</span>
               </div>
-              <button
-                v-if="shareTarget?.accessRole === 'owner'"
-                class="btn-remove"
-                :disabled="isRemovingMember"
-                @click="handleRemoveMember(collab)"
-                title="移除成員"
-              >
-                <font-awesome-icon icon="trash" />
-              </button>
+              <div v-if="shareTarget?.accessRole === 'owner'" class="collab-actions">
+                <button
+                  v-if="editingMemberEmail !== (collab.email || collab.uid)"
+                  class="btn-edit-member"
+                  @click="startEditMember(collab)"
+                  title="編輯權限"
+                >
+                  <font-awesome-icon :icon="['fas', 'pen-to-square']" />
+                </button>
+                <button
+                  class="btn-remove"
+                  :disabled="isRemovingMember"
+                  @click="handleRemoveMember(collab)"
+                  title="移除成員"
+                >
+                  <font-awesome-icon icon="trash" />
+                </button>
+              </div>
             </li>
           </ul>
           <p v-else class="helper-text">目前沒有其他成員。</p>
@@ -343,7 +407,16 @@ const executeDeleteTrip = async () => {
 // --- 分享與共編 UI ---
 const isShareModalOpen = ref(false)
 const shareTarget = ref(null)
-const shareInviteForm = ref({ email: '', role: 'editor' })
+const allTabOptions = [
+  { key: 'itinerary', label: '行程規劃' },
+  { key: 'shopping', label: '購物清單' },
+  { key: 'food', label: '美食清單' },
+  { key: 'journal', label: '旅遊手帳' },
+  { key: 'ledger', label: '記帳分帳' },
+  { key: 'luggage', label: '行李清單' },
+]
+const tabLabelMap = Object.fromEntries(allTabOptions.map(t => [t.key, t.label]))
+const shareInviteForm = ref({ email: '', role: 'editor', permissions: ['itinerary', 'shopping', 'food', 'journal', 'ledger', 'luggage'] })
 const shareLinkRole = ref('viewer')
 const shareCollaborators = ref([])
 const isShareDetailsLoading = ref(false)
@@ -413,7 +486,7 @@ const fetchShareDetails = async () => {
 
 const openShareModal = (trip) => {
   shareTarget.value = trip
-  shareInviteForm.value = { email: '', role: 'editor' }
+  shareInviteForm.value = { email: '', role: 'editor', permissions: ['itinerary', 'shopping', 'food', 'journal', 'ledger', 'luggage'] }
   shareCollaborators.value = Array.isArray(trip.collaborators) ? trip.collaborators : []
   shareLinkRole.value = trip.shareLinkRole || 'viewer'
   isShareModalOpen.value = true
@@ -422,7 +495,7 @@ const openShareModal = (trip) => {
 
 const closeShareModal = () => {
   isShareModalOpen.value = false
-  shareInviteForm.value = { email: '', role: 'editor' }
+  shareInviteForm.value = { email: '', role: 'editor', permissions: ['itinerary', 'shopping', 'food', 'journal', 'ledger', 'luggage'] }
   shareTarget.value = null
   shareCollaborators.value = []
   shareLinkRole.value = 'viewer'
@@ -438,12 +511,17 @@ const handleSendInvite = async () => {
 
   isSendingInvite.value = true
   try {
+    const inviteBody = {
+      email: shareInviteForm.value.email,
+      role: shareInviteForm.value.role,
+      ...(shareInviteForm.value.role === 'editor' ? { permissions: shareInviteForm.value.permissions } : {}),
+    }
     const response = await authFetch(`/api/trips/${shareTarget.value.id}/sharing/invite`, {
       method: 'POST',
-      body: shareInviteForm.value,
+      body: inviteBody,
     })
     shareCollaborators.value = Array.isArray(response.collaborators) ? response.collaborators : []
-    shareInviteForm.value = { email: '', role: 'editor' }
+    shareInviteForm.value = { email: '', role: 'editor', permissions: ['itinerary', 'shopping', 'food', 'journal', 'ledger', 'luggage'] }
     updateActiveTripCache(shareTarget.value.id, {
       collaborators: shareCollaborators.value,
       collaboratorEmails: deriveCollaboratorEmails(shareCollaborators.value),
@@ -510,6 +588,52 @@ const activeRoleLabel = computed(() => roleLabel(shareTarget.value?.accessRole |
 const isRemoveMemberModalOpen = ref(false)
 const memberToRemove = ref(null)
 const isRemovingMember = ref(false)
+
+// --- 編輯成員權限 ---
+const editingMemberEmail = ref(null)
+const editingMemberRole = ref('editor')
+const editingMemberPermissions = ref([])
+const isSavingMemberEdit = ref(false)
+
+const startEditMember = (collab) => {
+  editingMemberEmail.value = collab.email || collab.uid
+  editingMemberRole.value = collab.role || 'viewer'
+  editingMemberPermissions.value = Array.isArray(collab.permissions) ? [...collab.permissions] : [...allTabOptions.map(t => t.key)]
+}
+
+const cancelEditMember = () => {
+  editingMemberEmail.value = null
+  editingMemberRole.value = 'editor'
+  editingMemberPermissions.value = []
+}
+
+const saveEditMember = async (collab) => {
+  if (!shareTarget.value) return
+  isSavingMemberEdit.value = true
+  try {
+    const body = {
+      email: collab.email,
+      role: editingMemberRole.value,
+      ...(editingMemberRole.value === 'editor' ? { permissions: editingMemberPermissions.value } : {}),
+    }
+    const response = await authFetch(`/api/trips/${shareTarget.value.id}/sharing/invite`, {
+      method: 'POST',
+      body,
+    })
+    shareCollaborators.value = Array.isArray(response.collaborators) ? response.collaborators : []
+    updateActiveTripCache(shareTarget.value.id, {
+      collaborators: shareCollaborators.value,
+      collaboratorEmails: deriveCollaboratorEmails(shareCollaborators.value),
+    })
+    pushToast('成員權限已更新', 'success')
+    cancelEditMember()
+  } catch (error) {
+    const message = error?.data?.message || '更新權限失敗'
+    pushToast(message, 'error')
+  } finally {
+    isSavingMemberEdit.value = false
+  }
+}
 
 const handleRemoveMember = (collab) => {
   if (!shareTarget.value) return
@@ -618,7 +742,7 @@ const collaboratorPreview = (trip) => {
     padding: 0.65rem 1.4rem;
     border-radius: 999px;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 1rem;
     cursor: pointer;
     box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
     transition: transform 0.2s ease;
@@ -1175,6 +1299,150 @@ const collaboratorPreview = (trip) => {
       opacity: 0.5;
       cursor: not-allowed;
     }
+  }
+}
+
+/* 頁面權限選擇器 */
+.permissions-selector {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fefce8;
+  border: 1px solid #fde68a;
+  border-radius: 0.75rem;
+
+  .permissions-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #92400e;
+  }
+}
+
+.permissions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.perm-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    accent-color: #ff8a3e;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.perm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.perm-tag {
+  display: inline-block;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid #fed7aa;
+  font-weight: 600;
+}
+
+/* 成員操作按鈕區 */
+.collab-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.btn-edit-member {
+  padding: 0.4rem;
+  background: transparent;
+  border: 1px solid #ff8a3e;
+  color: #ff8a3e;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.85rem;
+
+  &:hover {
+    background: #ff8a3e;
+    color: white;
+  }
+}
+
+/* 內聯編輯區域 */
+.inline-edit-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.inline-edit-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.inline-edit-select {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.permissions-selector.compact {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+
+  .btn-save {
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: #ff8a3e;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover:not(:disabled) { background: #e87a30; }
+    &:disabled { opacity: 0.6; cursor: not-allowed; }
+  }
+
+  .btn-cancel {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: white;
+    color: #374151;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover { background: #f3f4f6; }
   }
 }
 </style>

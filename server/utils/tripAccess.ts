@@ -19,15 +19,18 @@ type CollaboratorEntry = {
 
 export type TripAccessResult = {
   role: TripRole
+  permissions: string[]
   user: any
   tripId: string
   tripData: Record<string, any>
   docRef: FirebaseFirestore.DocumentReference
 }
 
-export const resolveTripRoleForUser = (tripData: Record<string, any>, user: any): TripRole | null => {
+const ALL_TAB_KEYS = ['itinerary', 'shopping', 'food', 'journal', 'ledger', 'luggage']
+
+export const resolveTripRoleForUser = (tripData: Record<string, any>, user: any): { role: TripRole | null; permissions: string[] } => {
   if (tripData.userId === user.uid) {
-    return 'owner'
+    return { role: 'owner', permissions: [...ALL_TAB_KEYS] }
   }
 
   const collaborators: CollaboratorEntry[] = Array.isArray(tripData.collaborators)
@@ -45,10 +48,15 @@ export const resolveTripRoleForUser = (tripData: Record<string, any>, user: any)
   })
 
   if (!match) {
-    return null
+    return { role: null, permissions: [] }
   }
 
-  return match.role === 'editor' ? 'editor' : 'viewer'
+  const role = match.role === 'editor' ? 'editor' : 'viewer'
+  const permissions = Array.isArray(match.permissions) && match.permissions.length > 0
+    ? match.permissions
+    : [...ALL_TAB_KEYS]
+
+  return { role, permissions }
 }
 
 export const ensureTripAccess = async (
@@ -70,7 +78,7 @@ export const ensureTripAccess = async (
   }
 
   const data = docSnap.data() || {}
-  const role = resolveTripRoleForUser(data, user)
+  const { role, permissions } = resolveTripRoleForUser(data, user)
 
   if (!role) {
     throw createError({ statusCode: 403, message: '沒有權限讀取此旅程' })
@@ -82,6 +90,7 @@ export const ensureTripAccess = async (
 
   return {
     role,
+    permissions,
     user,
     tripId: docSnap.id,
     tripData: data,

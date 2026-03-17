@@ -284,6 +284,7 @@ const deleteItem = async (place: any, itemId: string) => {
     padding: 0.65rem 1.4rem;
     border-radius: 999px;
     font-weight: 700;
+    font-size: 1rem;
     cursor: pointer;
     box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
     transition: transform 0.2s ease;
@@ -313,7 +314,7 @@ const deleteItem = async (place: any, itemId: string) => {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
-  min-height: 320px;
+  // min-height: 320px;
 }
 
 .edit-btn,

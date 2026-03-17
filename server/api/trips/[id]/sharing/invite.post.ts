@@ -3,15 +3,20 @@ import { ensureTripAccess } from '../../../../utils/tripAccess'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const ALL_TAB_KEYS = ['itinerary', 'shopping', 'food', 'journal', 'ledger', 'luggage'] as const
+type TabKey = typeof ALL_TAB_KEYS[number]
+
 type InvitePayload = {
   email: string
   role: 'viewer' | 'editor'
+  permissions?: TabKey[]
 }
 
 type CollaboratorEntry = {
   uid?: string
   email?: string
   role: 'viewer' | 'editor'
+  permissions?: TabKey[]
   invitedBy?: string
   invitedAt?: string
 }
@@ -30,6 +35,9 @@ export default defineEventHandler(async (event) => {
     const body = (await readBody(event)) as Partial<InvitePayload>
     const email = normalizeEmail(String(body.email || ''))
     const requestedRole = body.role === 'editor' ? 'editor' : 'viewer'
+    const permissions = Array.isArray(body.permissions)
+      ? body.permissions.filter((p) => ALL_TAB_KEYS.includes(p as TabKey))
+      : [...ALL_TAB_KEYS]
 
     if (!EMAIL_REGEX.test(email)) {
       throw createError({ statusCode: 422, message: '請輸入正確的 Email' })
@@ -65,6 +73,7 @@ export default defineEventHandler(async (event) => {
     const newEntry: CollaboratorEntry = {
       email,
       role: requestedRole,
+      permissions,
       invitedBy: user.uid,
       invitedAt: timestamp,
     }

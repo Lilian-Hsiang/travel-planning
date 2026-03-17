@@ -28,14 +28,16 @@ export default defineEventHandler(async (event) => {
 
     ownedSnap.forEach((doc) => {
       const data = doc.data()
-      tripsMap.set(doc.id, { id: doc.id, ...data, accessRole: 'owner' })
+      tripsMap.set(doc.id, { id: doc.id, ...data, accessRole: 'owner', accessPermissions: ['itinerary', 'shopping', 'food', 'journal', 'ledger', 'luggage'] })
     })
 
     const pushTrip = (doc: any, role?: string) => {
       if (tripsMap.has(doc.id)) return
       const data = doc.data()
-      const resolvedRole = role || resolveTripRoleForUser(data, user) || 'viewer'
-      tripsMap.set(doc.id, { id: doc.id, ...data, accessRole: resolvedRole })
+      const resolved = resolveTripRoleForUser(data, user)
+      const resolvedRole = role || resolved.role || 'viewer'
+      const resolvedPermissions = resolved.permissions || []
+      tripsMap.set(doc.id, { id: doc.id, ...data, accessRole: resolvedRole, accessPermissions: resolvedPermissions })
     }
 
     collabSnap.forEach((doc) => pushTrip(doc))

@@ -625,6 +625,7 @@ const confirmDelete = async () => {
     padding: 0.65rem 1.25rem;
     border-radius: 999px;
     font-weight: 700;
+    font-size: 1rem;
     box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -1151,8 +1152,6 @@ const confirmDelete = async () => {
   }
 
   .card-media {
-    padding-bottom: 2.75rem;
-
     .nav {
       width: 32px;
       height: 32px;

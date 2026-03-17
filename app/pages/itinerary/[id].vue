@@ -12,12 +12,12 @@
       </div>
       
       <nav class="trip-tabs">
-        <button :class="{ active: activeTab === 'itinerary' }" @click="activeTab = 'itinerary'">行程規劃</button>
-        <button :class="{ active: activeTab === 'shopping' }" @click="activeTab = 'shopping'">購物清單</button>
-        <button :class="{ active: activeTab === 'food' }" @click="activeTab = 'food'">美食清單</button>
-        <button :class="{ active: activeTab === 'journal' }" @click="activeTab = 'journal'">旅遊手帳</button>
-        <button :class="{ active: activeTab === 'ledger' }" @click="activeTab = 'ledger'">記帳分帳</button>
-        <button :class="{ active: activeTab === 'luggage' }" @click="activeTab = 'luggage'">行李清單</button>
+        <button :class="{ active: activeTab === 'itinerary' }" @click="switchTab('itinerary')">行程規劃</button>
+        <button :class="{ active: activeTab === 'shopping' }" @click="switchTab('shopping')">購物清單</button>
+        <button :class="{ active: activeTab === 'food' }" @click="switchTab('food')">美食清單</button>
+        <button :class="{ active: activeTab === 'journal' }" @click="switchTab('journal')">旅遊手帳</button>
+        <button :class="{ active: activeTab === 'ledger' }" @click="switchTab('ledger')">記帳分帳</button>
+        <button :class="{ active: activeTab === 'luggage' }" @click="switchTab('luggage')">行李清單</button>
       </nav>
     </header>
 
@@ -28,7 +28,7 @@
         <div class="sidebar-header">
           <div class="header-title-row">
             <h2>行程天數</h2>
-            <button @click="isDayModalOpen = true" class="add-day-btn">+ 新增天數</button>
+            <button v-if="canEditItinerary" @click="isDayModalOpen = true" class="add-day-btn">+ 新增天數</button>
           </div>
         </div>
         
@@ -49,7 +49,7 @@
       <main class="timeline-content">
         <div class="content-header">
           <h2>第 {{ selectedDay }} 天行程</h2>
-          <button @click="openAddModal" class="add-item-btn" :disabled="!trip?.days?.length">
+          <button v-if="canEditItinerary" @click="openAddModal" class="add-item-btn" :disabled="!trip?.days?.length">
             + 新增行程
           </button>
         </div>
@@ -86,7 +86,7 @@
               </div>
 
               <div class="card">
-                <div class="drag-handle" title="拖曳排序">
+                <div v-if="canEditItinerary" class="drag-handle" title="拖曳排序">
                   <FontAwesomeIcon :icon="['fas', 'grip-vertical']" />
                 </div>
                 <div class="card-time">{{ element.time || '00:00' }}</div>
@@ -103,7 +103,7 @@
                     {{ element.notes }}
                   </p>
                 </div>
-                <div class="card-actions">
+                <div v-if="canEditItinerary" class="card-actions">
                   <button class="edit-btn" @click="openEdit(element)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
                   <button @click="openDeleteConfirm(element)" class="delete-btn"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
                 </div>
@@ -119,7 +119,7 @@
       <PlaceListTab
         list-type="shopping"
         :trip-id="tripId as string"
-        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+        :access-role="tabAccessRole('shopping')"
       />
     </div>
 
@@ -128,7 +128,7 @@
       <PlaceListTab
         list-type="food"
         :trip-id="tripId as string"
-        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+        :access-role="tabAccessRole('food')"
       />
     </div>
 
@@ -136,7 +136,7 @@
     <div v-else-if="activeTab === 'journal'">
       <JournalTab
         :trip-id="tripId as string"
-        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+        :access-role="tabAccessRole('journal')"
       />
     </div>
 
@@ -149,7 +149,7 @@
     <div v-else-if="activeTab === 'luggage'">
       <PackingListTab
         :trip-id="tripId as string"
-        :access-role="(trip?.accessRole as 'owner' | 'editor' | 'viewer') || 'viewer'"
+        :access-role="tabAccessRole('luggage')"
       />
     </div>
 
@@ -221,9 +221,38 @@ const tripId = route.params.id
 
 const { authFetch } = useAuthFetch()
 const { user } = useAuth()
+const { push: pushToast } = useToast()
 
 // --- Tab 狀態管理 ---
 const activeTab = ref('itinerary') // 預設顯示「行程規劃」
+
+// 切換 Tab 時，如果沒有編輯權限則顯示提醒
+const switchTab = (tabKey: string) => {
+  activeTab.value = tabKey
+  const role = tabAccessRole(tabKey)
+  if (role !== 'owner' && role !== 'editor') {
+    pushToast('你沒有權限編輯噢！', 'error')
+  }
+}
+
+// 每個 Tab 的實際權限（依據協作者的 permissions 欄位）
+const tabAccessRole = (tabKey: string): 'owner' | 'editor' | 'viewer' => {
+  const role = trip.value?.accessRole
+  if (!role) return 'viewer'
+  if (role === 'owner') return 'owner'
+
+  const perms: string[] | undefined = trip.value?.accessPermissions
+  // 如果沒有設定 permissions 或為空，向下相容：沿用基礎角色
+  if (!perms || perms.length === 0) return role
+  // 有 permissions 且包含此 tab → 使用基礎角色，否則降為 viewer
+  return perms.includes(tabKey) ? role : 'viewer'
+}
+
+// 行程規劃 Tab 是否可編輯
+const canEditItinerary = computed(() => {
+  const role = tabAccessRole('itinerary')
+  return role === 'owner' || role === 'editor'
+})
 
 // 1. 取得該旅程的詳細資訊
 const { data: trip, refresh: refreshTrip, pending: tripPending } = await useAsyncData(
@@ -547,7 +576,7 @@ const confirmDelete = async () => {
         padding: 0.5rem 0.9rem; 
         border-radius: 999px;
         cursor: pointer; 
-        font-size: 0.875rem; 
+        font-size: 1rem; 
         font-weight: 700;
         font-weight: bold; 
         transition: background 0.2s;
@@ -613,6 +642,7 @@ const confirmDelete = async () => {
       padding: 0.65rem 1.4rem;
       border-radius: 999px;
       font-weight: 700;
+      font-size: 1rem;
       cursor: pointer; font-weight: bold;
       box-shadow: 0 10px 24px rgba(255, 138, 62, 0.3);
       transition: transform 0.2s ease;
@@ -635,7 +665,7 @@ const confirmDelete = async () => {
   align-items: center;
   justify-content: center;
   width: 1.5rem;
-  color: #c0b8a8;
+  color: #FFD283;
   cursor: grab;
   font-size: 1.1rem;
   flex-shrink: 0;
@@ -736,9 +766,9 @@ const confirmDelete = async () => {
 .card {
   background: white;
   border-radius: 1rem;
-  padding: 1.25rem;
+  padding: 1.25rem 1.25rem 1.25rem 0.5rem;
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   align-items: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   flex-wrap: wrap;
