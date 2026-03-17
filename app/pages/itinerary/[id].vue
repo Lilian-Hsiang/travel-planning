@@ -59,46 +59,58 @@
           這天還沒有行程喔！
         </div>
 
-        <div v-else class="itinerary-list">
-          <template v-for="(item, index) in filteredItineraries" :key="item.id">
-            
-            <!-- 行程間的交通時間/距離 (從第二筆開始顯示) -->
-            <div v-if="index > 0" class="transit-connector">
-              <div class="connector-line"></div>
-              <a 
-                :href="getDirectionsUrl(filteredItineraries[index-1].location, item.location)" 
-                target="_blank" 
-                class="transit-link"
-                title="點擊導航"
-              >
-               <FontAwesomeIcon :icon="['fas', 'route']" class="inline-icon" />
-                開啟路線導航
-              </a>
-            </div>
-
-            <div class="card">
-              <div class="card-time">{{ item.time || '00:00' }}</div>
-              <div class="card-body">
-                <span class="category">{{ item.category || 'ATTRACTION' }}</span>
-                <h3>{{ item.name }}</h3>
-                <p class="location-row">
-                  <!-- <FontAwesomeIcon :icon="['fas', 'location-dot']" class="" aria-hidden="true" /> -->
-                  📍 <a :href="getMapUrl(item.location)" target="_blank" class="location-link">
-                    {{ item.location }}
-                  </a>
-                </p>
-                <p v-if="item.notes" class="notes">
-                  <FontAwesomeIcon :icon="['far', 'clipboard']" class="inline-icon" aria-hidden="true" />
-                  {{ item.notes }}
-                </p>
+        <draggable
+          v-else
+          v-model="draggableItineraries"
+          item-key="id"
+          handle=".drag-handle"
+          ghost-class="drag-ghost"
+          chosen-class="drag-chosen"
+          @end="onDragEnd"
+          class="itinerary-list"
+        >
+          <template #item="{ element, index }">
+            <div class="draggable-item">
+              <!-- 行程間的交通時間/距離 (從第二筆開始顯示) -->
+              <div v-if="index > 0" class="transit-connector">
+                <div class="connector-line"></div>
+                <a 
+                  :href="getDirectionsUrl(draggableItineraries[index-1].location, element.location)" 
+                  target="_blank" 
+                  class="transit-link"
+                  title="點擊導航"
+                >
+                 <FontAwesomeIcon :icon="['fas', 'route']" class="inline-icon" />
+                  開啟路線導航
+                </a>
               </div>
-              <div class="card-actions">
-                <button class="edit-btn" @click="openEdit(item)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
-                <button @click="openDeleteConfirm(item)" class="delete-btn"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
+
+              <div class="card">
+                <div class="drag-handle" title="拖曳排序">
+                  <FontAwesomeIcon :icon="['fas', 'grip-vertical']" />
+                </div>
+                <div class="card-time">{{ element.time || '00:00' }}</div>
+                <div class="card-body">
+                  <span class="category">{{ element.category || 'ATTRACTION' }}</span>
+                  <h3>{{ element.name }}</h3>
+                  <p class="location-row">
+                    📍 <a :href="getMapUrl(element.location)" target="_blank" class="location-link">
+                      {{ element.location }}
+                    </a>
+                  </p>
+                  <p v-if="element.notes" class="notes">
+                    <FontAwesomeIcon :icon="['far', 'clipboard']" class="inline-icon" aria-hidden="true" />
+                    {{ element.notes }}
+                  </p>
+                </div>
+                <div class="card-actions">
+                  <button class="edit-btn" @click="openEdit(element)"><FontAwesomeIcon :icon="['fas', 'pen-to-square']" aria-hidden="true" /></button>
+                  <button @click="openDeleteConfirm(element)" class="delete-btn"><FontAwesomeIcon :icon="['fas', 'trash']" aria-hidden="true" /></button>
+                </div>
               </div>
             </div>
           </template>
-        </div>
+        </draggable>
       </main>
     </div>
 
@@ -200,8 +212,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import draggable from 'vuedraggable'
 
 const route = useRoute()
 const tripId = route.params.id
@@ -261,8 +274,43 @@ const filteredItineraries = computed(() => {
   if (!itineraries.value) return []
   return itineraries.value
     .filter(item => item.day === selectedDay.value)
-    .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'))
+    .sort((a, b) => {
+      const orderA = a.order ?? Infinity
+      const orderB = b.order ?? Infinity
+      if (orderA !== orderB) return orderA - orderB
+      return (a.time || '00:00').localeCompare(b.time || '00:00')
+    })
 })
+
+// 拖曳用的可寫入列表
+const draggableItineraries = ref<any[]>([])
+
+watch(filteredItineraries, (val) => {
+  draggableItineraries.value = [...val]
+}, { immediate: true })
+
+// 拖曳結束後，更新所有項目的 order
+const onDragEnd = async () => {
+  const updates = draggableItineraries.value.map((item, index) => ({
+    id: item.id,
+    order: index
+  }))
+
+  try {
+    await Promise.all(
+      updates.map(({ id, order }) =>
+        authFetch(`/api/itinerary/${id}`, {
+          method: 'PUT',
+          body: { order }
+        })
+      )
+    )
+    await refresh()
+  } catch (err) {
+    alert('排序儲存失敗')
+    await refresh()
+  }
+}
 
 // --- Google Maps 連結產生器 ---
 const getMapUrl = (location: string) => {
@@ -577,6 +625,35 @@ const confirmDelete = async () => {
 /* 行程卡片 */
 .itinerary-list { display: flex; flex-direction: column; gap: 1rem; }
 
+/* 拖曳相關 */
+.draggable-item {
+  cursor: default;
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  color: #c0b8a8;
+  cursor: grab;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  transition: color 0.2s;
+  
+  &:hover { color: #FEA365; }
+  &:active { cursor: grabbing; }
+}
+
+.drag-ghost {
+  opacity: 0.4;
+}
+
+.drag-chosen .card {
+  box-shadow: 0 8px 24px rgba(254, 163, 101, 0.35);
+  transform: scale(1.02);
+}
+
 /* 景點連結 */
 .location-link {
   color: #9FAF64;
@@ -610,7 +687,7 @@ const confirmDelete = async () => {
   align-items: center;
   gap: 1rem;
   padding: 0 1rem;
-  margin: -0.25rem 0; /* 讓它跟兩邊卡片靠近一點 */
+  // margin: -0.25rem 0; /* 讓它跟兩邊卡片靠近一點 */
   
   .connector-line {
     width: 3rem; /* 對齊卡片的時間寬度 */

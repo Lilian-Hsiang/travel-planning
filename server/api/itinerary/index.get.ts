@@ -20,6 +20,9 @@ export default defineEventHandler(async (event) => {
       .sort((a: any, b: any) => {
         const dayDiff = (a.day || 0) - (b.day || 0)
         if (dayDiff !== 0) return dayDiff
+        const orderA = a.order ?? Infinity
+        const orderB = b.order ?? Infinity
+        if (orderA !== orderB) return orderA - orderB
         return String(a.time || '00:00').localeCompare(String(b.time || '00:00'))
       })
 
