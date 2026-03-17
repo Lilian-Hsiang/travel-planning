@@ -623,7 +623,7 @@ const confirmDelete = async () => {
 }
 
 /* 行程卡片 */
-.itinerary-list { display: flex; flex-direction: column; gap: 1rem; }
+.itinerary-list { display: flex; flex-direction: column; }
 
 /* 拖曳相關 */
 .draggable-item {
@@ -694,6 +694,7 @@ const confirmDelete = async () => {
     height: 100%;
     min-height: 2.5rem;
     position: relative;
+    margin: 0.5rem 0;
     &::after {
       content: '';
       position: absolute;
