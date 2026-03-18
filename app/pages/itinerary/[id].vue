@@ -93,7 +93,7 @@
                 <div class="card-body">
                   <span class="category">{{ element.category || 'ATTRACTION' }}</span>
                   <h3>{{ element.name }}</h3>
-                  <p class="location-row">
+                  <p v-if="element.location" class="location-row">
                     📍 <a :href="getMapUrl(element.location)" target="_blank" class="location-link">
                       {{ element.location }}
                     </a>
@@ -186,7 +186,7 @@
         </div>
         <div class="form-group">
           <label>地點</label>
-          <input v-model="form.location" type="text" required />
+          <input v-model="form.location" type="text" />
         </div>
         <div class="form-group">
           <label>備註</label>
