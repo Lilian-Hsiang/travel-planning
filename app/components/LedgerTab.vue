@@ -565,6 +565,7 @@ const toggleSettlement = async (entry: any, splitId: string) => {
   color: #6b4f3b;
   font-size: 0.9rem;
   min-height: 2.25rem;
+  white-space: pre-wrap;
 }
 
 .split-list {

@@ -367,7 +367,24 @@ const form = ref({ name: '', startDate: '', endDate: '' })
 const createTrip = async () => {
   isSubmitting.value = true
   try {
-    await authFetch('/api/trips', { method: 'POST', body: form.value })
+    // 根據起始日期與結束日期自動產生 days 陣列
+    const days = []
+    if (form.value.startDate && form.value.endDate) {
+      const start = new Date(form.value.startDate)
+      const end = new Date(form.value.endDate)
+      let current = new Date(start)
+      let dayNum = 1
+      while (current <= end) {
+        days.push({
+          day: dayNum,
+          date: current.toISOString().split('T')[0]
+        })
+        dayNum++
+        current.setDate(current.getDate() + 1)
+      }
+    }
+
+    await authFetch('/api/trips', { method: 'POST', body: { ...form.value, days } })
     isModalOpen.value = false
     form.value = { name: '', startDate: '', endDate: '' }
     await refresh()
