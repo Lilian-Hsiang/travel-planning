@@ -28,6 +28,7 @@ export default defineEventHandler(async (event) => {
       tripId: String(body.tripId),
       itemName: String(body.itemName).trim(),
       totalAmount: Number(body.totalAmount) || 0,
+      currency: String(body.currency || 'TWD').trim(),
       payer: String(body.payer || '').trim(),
       notes: String(body.notes || '').trim(),
       splits: normalizeSplits(Array.isArray(body.splits) ? body.splits : []),

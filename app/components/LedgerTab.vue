@@ -15,7 +15,13 @@
         <div class="card-header">
           <div>
             <p class="item-label">{{ entry.itemName }}</p>
-            <p class="amount">NT$ {{ formatCurrency(entry.totalAmount) }}</p>
+            <p class="amount">
+              {{ entry.currency || 'TWD' }} {{ formatCurrency(entry.totalAmount) }}
+              <br/>
+              <span v-if="toTWD(entry.totalAmount, entry.currency)" class="twd-convert">
+                (≈ NT$ {{ formatCurrency(toTWD(entry.totalAmount, entry.currency)) }})
+              </span>
+            </p>
             <p v-if="entry.payer" class="payer">由 {{ entry.payer }} 先行支付</p>
           </div>
           <div class="card-actions">
@@ -39,7 +45,12 @@
             </div>
             <div class="split-item">
               <span class="split-label">應付金額</span>
-              <span class="split-amount">NT$ {{ formatCurrency(split.amount) }}</span>
+              <span class="split-amount">
+                {{ entry.currency || 'TWD' }} {{ formatCurrency(split.amount) }}
+                <span v-if="toTWD(split.amount, entry.currency)" class="twd-convert-sm">
+                  (≈NT$ {{ formatCurrency(toTWD(split.amount, entry.currency)) }})
+                </span>
+              </span>
             </div>
             <div class="split-item">
               <span class="split-label">狀態</span>
@@ -55,8 +66,12 @@
         </div>
 
         <div class="card-summary">
-          <span>分帳總額：NT$ {{ formatCurrency(sumSplit(entry.splits)) }}</span>
-          <span>尚未結清：NT$ {{ formatCurrency(unsettledTotal(entry.splits)) }}</span>
+          <span>分帳總額：{{ entry.currency || 'TWD' }} {{ formatCurrency(sumSplit(entry.splits)) }}</span>
+          <span>尚未結清：{{ entry.currency || 'TWD' }} {{ formatCurrency(unsettledTotal(entry.splits)) }}
+            <span v-if="toTWD(unsettledTotal(entry.splits), entry.currency)" class="twd-convert-sm">
+              (≈NT$ {{ formatCurrency(toTWD(unsettledTotal(entry.splits), entry.currency)) }})
+            </span>
+          </span>
         </div>
       </div>
     </div>
@@ -71,6 +86,32 @@
           <div class="form-group">
             <label>總金額</label>
             <input v-model.number="form.totalAmount" type="number" min="0" step="1" required placeholder="0" />
+          </div>
+          <div class="form-group currency-group">
+            <label>幣別</label>
+            <div class="currency-selector">
+              <input
+                type="text"
+                class="currency-input"
+                :placeholder="form.currency || '搜尋幣別...'"
+                v-model="currencySearch"
+                @focus="isCurrencyDropdownOpen = true"
+                @blur="closeCurrencyDropdown"
+                autocomplete="off"
+              />
+              <span class="currency-badge" v-if="form.currency">{{ form.currency }}</span>
+              <ul v-if="isCurrencyDropdownOpen && filteredCurrencies.length" class="currency-dropdown">
+                <li
+                  v-for="c in filteredCurrencies"
+                  :key="c.code"
+                  :class="{ active: c.code === form.currency }"
+                  @mousedown.prevent="selectCurrency(c.code)"
+                >
+                  {{ c.label }}
+                </li>
+              </ul>
+              <p v-if="isCurrencyDropdownOpen && filteredCurrencies.length === 0" class="no-result">查無幣別</p>
+            </div>
           </div>
           <div class="form-group">
             <label>付款人 (選填)</label>
@@ -99,9 +140,9 @@
             </button>
           </div>
           <div class="split-summary">
-            <span>成員金額合計：NT$ {{ formatCurrency(sumSplit(form.splits)) }}</span>
+            <span>成員金額合計：{{ form.currency }} {{ formatCurrency(sumSplit(form.splits)) }}</span>
             <span v-if="Number(form.totalAmount)">
-              與總金額差：NT$ {{ formatCurrency(Number(form.totalAmount) - sumSplit(form.splits)) }}
+              與總金額差：{{ form.currency }} {{ formatCurrency(Number(form.totalAmount) - sumSplit(form.splits)) }}
             </span>
           </div>
         </div>
@@ -124,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 type SplitLine = {
   id: string
@@ -136,10 +177,46 @@ type SplitLine = {
 type LedgerForm = {
   itemName: string
   totalAmount: number | ''
+  currency: string
   payer: string
   notes: string
   splits: SplitLine[]
 }
+
+type CurrencyOption = {
+  code: string
+  label: string
+}
+
+const CURRENCY_LIST: CurrencyOption[] = [
+  { code: 'TWD', label: 'TWD - 新台幣' },
+  { code: 'USD', label: 'USD - 美元' },
+  { code: 'EUR', label: 'EUR - 歐元' },
+  { code: 'JPY', label: 'JPY - 日圓' },
+  { code: 'KRW', label: 'KRW - 韓元' },
+  { code: 'GBP', label: 'GBP - 英鎊' },
+  { code: 'AUD', label: 'AUD - 澳幣' },
+  { code: 'CAD', label: 'CAD - 加幣' },
+  { code: 'SGD', label: 'SGD - 新加坡幣' },
+  { code: 'HKD', label: 'HKD - 港幣' },
+  { code: 'CNY', label: 'CNY - 人民幣' },
+  { code: 'THB', label: 'THB - 泰銖' },
+  { code: 'VND', label: 'VND - 越南盾' },
+  { code: 'MYR', label: 'MYR - 馬來幣' },
+  { code: 'PHP', label: 'PHP - 菲律賓披索' },
+  { code: 'IDR', label: 'IDR - 印尼盾' },
+  { code: 'CHF', label: 'CHF - 瑞士法郎' },
+  { code: 'NZD', label: 'NZD - 紐西蘭幣' },
+  { code: 'SEK', label: 'SEK - 瑞典克朗' },
+  { code: 'DKK', label: 'DKK - 丹麥克朗' },
+  { code: 'NOK', label: 'NOK - 挪威克朗' },
+  { code: 'MXN', label: 'MXN - 墨西哥披索' },
+  { code: 'INR', label: 'INR - 印度盧比' },
+  { code: 'ZAR', label: 'ZAR - 南非蘭特' },
+  { code: 'BRL', label: 'BRL - 巴西雷亞爾' },
+  { code: 'AED', label: 'AED - 阿聯酋迪拉姆' },
+  { code: 'TRY', label: 'TRY - 土耳其里拉' },
+]
 
 const props = defineProps<{
   tripId: string | string[]
@@ -147,6 +224,51 @@ const props = defineProps<{
 
 const { authFetch } = useAuthFetch()
 const { user } = useAuth()
+
+// Exchange rates
+const exchangeRates = ref<Record<string, number>>({})
+
+const fetchExchangeRates = async () => {
+  try {
+    const rates = await $fetch<Record<string, number>>('/api/exchange-rate')
+    exchangeRates.value = rates
+  } catch {
+    // silently fail, conversion won't show
+  }
+}
+
+onMounted(() => {
+  fetchExchangeRates()
+})
+
+const toTWD = (amount: number, currency: string): number | null => {
+  if (!currency || currency === 'TWD') return null
+  const rate = exchangeRates.value[currency]
+  if (!rate) return null
+  return Math.round(amount * rate)
+}
+
+// Currency search
+const currencySearch = ref('')
+const isCurrencyDropdownOpen = ref(false)
+
+const filteredCurrencies = computed(() => {
+  const q = currencySearch.value.trim().toLowerCase()
+  if (!q) return CURRENCY_LIST
+  return CURRENCY_LIST.filter(c =>
+    c.code.toLowerCase().includes(q) || c.label.toLowerCase().includes(q)
+  )
+})
+
+const selectCurrency = (code: string) => {
+  form.value.currency = code
+  currencySearch.value = ''
+  isCurrencyDropdownOpen.value = false
+}
+
+const closeCurrencyDropdown = () => {
+  setTimeout(() => { isCurrencyDropdownOpen.value = false }, 150)
+}
 
 const { data: ledgerData, pending, refresh } = await useAsyncData(
   `ledger-${props.tripId}`,
@@ -171,7 +293,7 @@ const editingId = ref<string | null>(null)
 const generateId = () => Math.random().toString(36).substring(2, 9)
 
 const defaultSplit = (): SplitLine => ({ id: generateId(), name: '', amount: 0, isSettled: false })
-const defaultForm = (): LedgerForm => ({ itemName: '', totalAmount: '', payer: '', notes: '', splits: [defaultSplit()] })
+const defaultForm = (): LedgerForm => ({ itemName: '', totalAmount: '', currency: 'TWD', payer: '', notes: '', splits: [defaultSplit()] })
 
 const form = ref<LedgerForm>(defaultForm())
 
@@ -191,6 +313,7 @@ const openEditModal = (entry: any) => {
   form.value = {
     itemName: entry.itemName || '',
     totalAmount: typeof entry.totalAmount === 'number' ? entry.totalAmount : Number(entry.totalAmount) || '',
+    currency: entry.currency || 'TWD',
     payer: entry.payer || '',
     notes: entry.notes || '',
     splits: (entry.splits || []).map((split: SplitLine) => ({
@@ -229,7 +352,7 @@ const unsettledTotal = (splits: SplitLine[] = []) => {
     .reduce((sum, split) => sum + (Number(split.amount) || 0), 0)
 }
 
-const formatCurrency = (value: number | string | undefined) => {
+const formatCurrency = (value: number | string | null | undefined) => {
   const num = typeof value === 'string' ? Number(value) : value
   if (!num) return '0'
   return num.toLocaleString('zh-TW', { minimumFractionDigits: 0 })
@@ -239,6 +362,7 @@ const submitForm = async () => {
   const payload = {
     itemName: form.value.itemName.trim(),
     totalAmount: Number(form.value.totalAmount) || 0,
+    currency: form.value.currency || 'TWD',
     payer: form.value.payer.trim(),
     notes: form.value.notes.trim(),
     splits: form.value.splits.map(split => ({
@@ -546,6 +670,102 @@ const toggleSettlement = async (entry: any, splitId: string) => {
     font-size: 0.95rem;
     background: #fff9f2;
   }
+}
+
+.currency-group {
+  position: relative;
+}
+
+.currency-selector {
+  position: relative;
+
+  .currency-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #e4d5c5;
+    border-radius: 0.65rem;
+    padding: 0.75rem;
+    padding-right: 4rem;
+    font-size: 0.95rem;
+    background: #fff9f2;
+  }
+
+  .currency-badge {
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ff8a3e;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  .currency-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: white;
+    border: 1px solid #e4d5c5;
+    border-radius: 0.65rem;
+    margin-top: 0.25rem;
+    max-height: 200px;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0.25rem 0;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+
+    li {
+      padding: 0.55rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #5d4836;
+
+      &:hover {
+        background: #fff3e8;
+      }
+
+      &.active {
+        background: #ffe8d4;
+        font-weight: 600;
+        color: #c87332;
+      }
+    }
+  }
+
+  .no-result {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: white;
+    border: 1px solid #e4d5c5;
+    border-radius: 0.65rem;
+    margin-top: 0.25rem;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.twd-convert {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #7a6149;
+}
+
+.twd-convert-sm {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #9e8167;
 }
 
 .split-editor {

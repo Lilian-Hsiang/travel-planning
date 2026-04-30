@@ -42,6 +42,9 @@ export default defineEventHandler(async (event) => {
     if (Object.prototype.hasOwnProperty.call(updates, 'totalAmount')) {
       updates.totalAmount = Number(updates.totalAmount) || 0
     }
+    if (Object.prototype.hasOwnProperty.call(updates, 'currency')) {
+      updates.currency = String(updates.currency || 'TWD').trim()
+    }
     if (Object.prototype.hasOwnProperty.call(updates, 'payer')) {
       updates.payer = String(updates.payer || '').trim()
     }
