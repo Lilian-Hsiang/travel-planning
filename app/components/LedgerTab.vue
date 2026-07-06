@@ -85,7 +85,7 @@
           </div>
           <div class="form-group">
             <label>總金額</label>
-            <input v-model.number="form.totalAmount" type="number" min="0" step="1" required placeholder="0" />
+            <input v-model.number="form.totalAmount" type="number" min="0" step="0.01" required placeholder="0" />
           </div>
           <div class="form-group currency-group">
             <label>幣別</label>
@@ -128,14 +128,14 @@
             <h4>分帳成員</h4>
             <button type="button" class="ghost-btn" @click="addSplitLine">+ 新增成員</button>
           </div>
-          <div v-for="(split, index) in form.splits" :key="split.id" class="split-editor-row">
-            <input v-model="split.name" type="text" placeholder="成員名稱" required />
-            <input v-model.number="split.amount" type="number" min="0" step="1" placeholder="金額" required />
+          <div v-for="split in form.splits" :key="split.id" class="split-editor-row">
+            <input v-model="split.name" type="text" placeholder="成員名稱 (選填)" />
+            <input v-model.number="split.amount" type="number" min="0" step="0.01" placeholder="金額 (選填)" />
             <label class="settled-check">
               <input type="checkbox" v-model="split.isSettled" />
               已結清
             </label>
-            <button type="button" class="remove-btn" @click="removeSplitLine(split.id)" :disabled="form.splits.length === 1">
+            <button type="button" class="remove-btn" @click="removeSplitLine(split.id)">
               ✕
             </button>
           </div>
@@ -170,7 +170,7 @@ import { ref, computed, onMounted } from 'vue'
 type SplitLine = {
   id: string
   name: string
-  amount: number
+  amount: number | ''
   isSettled: boolean
 }
 
@@ -292,8 +292,8 @@ const editingId = ref<string | null>(null)
 
 const generateId = () => Math.random().toString(36).substring(2, 9)
 
-const defaultSplit = (): SplitLine => ({ id: generateId(), name: '', amount: 0, isSettled: false })
-const defaultForm = (): LedgerForm => ({ itemName: '', totalAmount: '', currency: 'TWD', payer: '', notes: '', splits: [defaultSplit()] })
+const defaultSplit = (): SplitLine => ({ id: generateId(), name: '', amount: '', isSettled: false })
+const defaultForm = (): LedgerForm => ({ itemName: '', totalAmount: '', currency: 'TWD', payer: '', notes: '', splits: [] })
 
 const form = ref<LedgerForm>(defaultForm())
 
@@ -323,9 +323,6 @@ const openEditModal = (entry: any) => {
       isSettled: Boolean(split.isSettled)
     }))
   }
-  if (form.value.splits.length === 0) {
-    form.value.splits.push(defaultSplit())
-  }
   isModalOpen.value = true
 }
 
@@ -338,7 +335,6 @@ const addSplitLine = () => {
 }
 
 const removeSplitLine = (splitId: string) => {
-  if (form.value.splits.length === 1) return
   form.value.splits = form.value.splits.filter(split => split.id !== splitId)
 }
 
