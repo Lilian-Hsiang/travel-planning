@@ -100,7 +100,16 @@
                   </p>
                   <p v-if="element.notes" class="notes">
                     <FontAwesomeIcon :icon="['far', 'clipboard']" class="inline-icon" aria-hidden="true" />
-                    {{ element.notes }}
+                    <template v-for="(segment, segmentIndex) in linkifyNotes(element.notes)" :key="segmentIndex">
+                      <a
+                        v-if="segment.href"
+                        :href="segment.href"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="notes-link"
+                      >{{ segment.text }}</a>
+                      <template v-else>{{ segment.text }}</template>
+                    </template>
                   </p>
                 </div>
                 <div v-if="canEditItinerary" class="card-actions">
@@ -382,6 +391,49 @@ const getMapUrl = (location: string) => {
 const getDirectionsUrl = (origin: string, destination: string) => {
   if (!origin || !destination) return '#'
   return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+}
+
+type NoteSegment = {
+  text: string
+  href?: string
+}
+
+// 保留備註原文，只將網址片段轉成可點擊的 http(s) 連結。
+const linkifyNotes = (notes: string): NoteSegment[] => {
+  const urlPattern = /(?:https?:\/\/|www\.)[^\s<]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:\/[^\s<]*)?/gi
+  const trailingPunctuation = /[.,!?;:\])}>，。！？；：）】》」』]+$/
+  const segments: NoteSegment[] = []
+  let cursor = 0
+
+  for (const match of notes.matchAll(urlPattern)) {
+    const matchIndex = match.index ?? 0
+    const rawUrl = match[0]
+    const punctuation = rawUrl.match(trailingPunctuation)?.[0] ?? ''
+    const urlText = punctuation ? rawUrl.slice(0, -punctuation.length) : rawUrl
+
+    if (matchIndex > cursor) {
+      segments.push({ text: notes.slice(cursor, matchIndex) })
+    }
+
+    if (urlText) {
+      segments.push({
+        text: urlText,
+        href: /^https?:\/\//i.test(urlText) ? urlText : `https://${urlText}`
+      })
+    }
+
+    if (punctuation) {
+      segments.push({ text: punctuation })
+    }
+
+    cursor = matchIndex + rawUrl.length
+  }
+
+  if (cursor < notes.length) {
+    segments.push({ text: notes.slice(cursor) })
+  }
+
+  return segments.length ? segments : [{ text: notes }]
 }
 
 // --- 新增天數邏輯 ---
@@ -830,6 +882,16 @@ const confirmDelete = async () => {
       font-size: 0.8125rem;
       margin: 0.25rem 0 0;
       white-space: pre-line;
+
+      .notes-link {
+        color: #2563eb;
+        text-decoration: underline;
+        overflow-wrap: anywhere;
+
+        &:hover {
+          color: #1d4ed8;
+        }
+      }
     }
     .card-editors {
       display: inline-flex;
