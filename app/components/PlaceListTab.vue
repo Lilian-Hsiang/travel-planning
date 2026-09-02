@@ -30,11 +30,32 @@
           <h4>{{ itemLabel }}清單</h4>
           <ul class="items-list">
             <li v-for="item in (place.items || [])" :key="item.id" class="item-row">
-              <label class="checkbox-label">
-                <input type="checkbox" :checked="item.isCompleted" @change="toggleItem(place, item.id)" :disabled="!canEdit" />
-                <span :class="{ completed: item.isCompleted }">{{ item.name }}</span>
-              </label>
-              <button class="delete-item-btn" @click="deleteItem(place, item.id)" :disabled="!canEdit">✕</button>
+              <div class="item-content">
+                <label class="checkbox-label">
+                  <input type="checkbox" :checked="item.isCompleted" @change="toggleItem(place, item.id)" :disabled="!canEdit" />
+                  <span :class="{ completed: item.isCompleted }">{{ item.name }}</span>
+                </label>
+                <p v-if="item.notes" class="item-notes">
+                  <template v-for="(segment, segmentIndex) in linkifyNotes(item.notes)" :key="segmentIndex">
+                    <a
+                      v-if="segment.href"
+                      :href="segment.href"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="item-notes-link"
+                    >{{ segment.text }}</a>
+                    <template v-else>{{ segment.text }}</template>
+                  </template>
+                </p>
+              </div>
+              <div v-if="canEdit" class="item-actions">
+                <button
+                  type="button"
+                  class="note-item-btn"
+                  @click="openItemNoteModal(place, item)"
+                >{{ item.notes ? '編輯備註' : '＋ 備註' }}</button>
+                <button type="button" class="delete-item-btn" @click="deleteItem(place, item.id)" aria-label="刪除項目">✕</button>
+              </div>
             </li>
           </ul>
           <form @submit.prevent="addItem(place)" class="add-item-form">
@@ -67,6 +88,26 @@
           <input v-model="form.location" type="text" required />
         </div>
         <button type="submit" class="submit-btn">確認儲存</button>
+      </form>
+    </AppModal>
+
+    <!-- 子項目備註 Modal -->
+    <AppModal :is-open="isItemNoteModalOpen" title="編輯備註" @close="closeItemNoteModal">
+      <form @submit.prevent="saveItemNote" class="modal-form">
+        <div class="form-group">
+          <label for="item-notes">「{{ editingItem?.name }}」的備註</label>
+          <textarea
+            id="item-notes"
+            v-model="itemNoteForm"
+            rows="5"
+            placeholder="輸入備註或網址，例如 https://example.com"
+            autofocus
+          ></textarea>
+          <span class="form-hint">備註中的網址儲存後可直接點擊開啟。清空內容即可移除備註。</span>
+        </div>
+        <button type="submit" class="submit-btn" :disabled="isSavingItemNote">
+          {{ isSavingItemNote ? '儲存中...' : '儲存備註' }}
+        </button>
       </form>
     </AppModal>
 
@@ -201,6 +242,48 @@ const getMapUrl = (location: string) => {
 // --- 子項目 邏輯 ---
 const newItemNames = ref<Record<string, string>>({})
 
+type NoteSegment = {
+  text: string
+  href?: string
+}
+
+const linkifyNotes = (notes: string): NoteSegment[] => {
+  const urlPattern = /(?:https?:\/\/|www\.)[^\s<]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:\/[^\s<]*)?/gi
+  const trailingPunctuation = /[.,!?;:\])}>，。！？；：）】》」』]+$/
+  const segments: NoteSegment[] = []
+  let cursor = 0
+
+  for (const match of notes.matchAll(urlPattern)) {
+    const matchIndex = match.index ?? 0
+    const rawUrl = match[0]
+    const punctuation = rawUrl.match(trailingPunctuation)?.[0] ?? ''
+    const urlText = punctuation ? rawUrl.slice(0, -punctuation.length) : rawUrl
+
+    if (matchIndex > cursor) {
+      segments.push({ text: notes.slice(cursor, matchIndex) })
+    }
+
+    if (urlText) {
+      segments.push({
+        text: urlText,
+        href: /^https?:\/\//i.test(urlText) ? urlText : `https://${urlText}`
+      })
+    }
+
+    if (punctuation) {
+      segments.push({ text: punctuation })
+    }
+
+    cursor = matchIndex + rawUrl.length
+  }
+
+  if (cursor < notes.length) {
+    segments.push({ text: notes.slice(cursor) })
+  }
+
+  return segments.length ? segments : [{ text: notes }]
+}
+
 const generateId = () => Math.random().toString(36).substring(2, 9)
 
 const addItem = async (place: any) => {
@@ -208,7 +291,7 @@ const addItem = async (place: any) => {
   const name = newItemNames.value[place.id]?.trim()
   if (!name) return
 
-  const newItem = { id: generateId(), name, isCompleted: false }
+  const newItem = { id: generateId(), name, notes: '', isCompleted: false }
   const updatedItems = [...(place.items || []), newItem]
 
   // Optimistic update locally could be done here, but we just trigger refetch for simplicity
@@ -221,6 +304,54 @@ const addItem = async (place: any) => {
     await refresh()
   } catch (e) {
     alert('新增項目失敗')
+  }
+}
+
+const isItemNoteModalOpen = ref(false)
+const editingPlace = ref<any>(null)
+const editingItem = ref<any>(null)
+const itemNoteForm = ref('')
+const isSavingItemNote = ref(false)
+
+const openItemNoteModal = (place: any, item: any) => {
+  if (!canEdit.value) return
+  editingPlace.value = place
+  editingItem.value = item
+  itemNoteForm.value = item.notes || ''
+  isItemNoteModalOpen.value = true
+}
+
+const closeItemNoteModal = () => {
+  if (isSavingItemNote.value) return
+  isItemNoteModalOpen.value = false
+  editingPlace.value = null
+  editingItem.value = null
+  itemNoteForm.value = ''
+}
+
+const saveItemNote = async () => {
+  if (!canEdit.value || !editingPlace.value || !editingItem.value || isSavingItemNote.value) return
+
+  const notes = itemNoteForm.value.trim()
+  const updatedItems = (editingPlace.value.items || []).map((item: any) => (
+    item.id === editingItem.value.id ? { ...item, notes } : item
+  ))
+
+  isSavingItemNote.value = true
+  try {
+    await authFetch(`${apiPath.value}/${editingPlace.value.id}`, {
+      method: 'PUT',
+      body: { items: updatedItems }
+    })
+    isItemNoteModalOpen.value = false
+    editingPlace.value = null
+    editingItem.value = null
+    itemNoteForm.value = ''
+    await refresh()
+  } catch (e) {
+    alert('備註儲存失敗')
+  } finally {
+    isSavingItemNote.value = false
   }
 }
 
@@ -384,8 +515,17 @@ const deleteItem = async (place: any, itemId: string) => {
     .item-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f3f4f6;
+
+      &:last-child { border-bottom: none; }
+
+      .item-content {
+        min-width: 0;
+        flex: 1;
+      }
 
       .checkbox-label {
         display: flex;
@@ -399,6 +539,42 @@ const deleteItem = async (place: any, itemId: string) => {
           text-decoration: line-through;
           color: #9ca3af;
         }
+      }
+
+      .item-notes {
+        margin: 0.35rem 0 0 1.55rem;
+        color: #6b7280;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+
+        .item-notes-link {
+          color: #2563eb;
+          text-decoration: underline;
+
+          &:hover { color: #1d4ed8; }
+        }
+      }
+
+      .item-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-shrink: 0;
+      }
+
+      .note-item-btn {
+        padding: 0.25rem 0.5rem;
+        border: none;
+        border-radius: 999px;
+        background: #fff4e8;
+        color: #c65f1a;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 700;
+
+        &:hover { background: #ffe4ce; }
       }
 
       .delete-item-btn {
@@ -461,16 +637,25 @@ const deleteItem = async (place: any, itemId: string) => {
     
     label { font-size: 0.875rem; font-weight: bold; color: #374151; }
     
-    input {
+    input,
+    textarea {
       padding: 0.75rem;
       border: 1px solid #d1d5db;
       border-radius: 0.5rem;
       font-size: 1rem;
+      font-family: inherit;
+      resize: vertical;
       &:focus {
         outline: none;
         border-color: #5A4CFA;
         box-shadow: 0 0 0 2px rgba(90, 76, 250, 0.2);
       }
+    }
+
+    .form-hint {
+      color: #6b7280;
+      font-size: 0.75rem;
+      line-height: 1.5;
     }
   }
   
@@ -485,6 +670,7 @@ const deleteItem = async (place: any, itemId: string) => {
     font-weight: bold;
     cursor: pointer;
     &:hover { background: #FEA365; }
+    &:disabled { opacity: 0.65; cursor: wait; }
   }
 }
 
